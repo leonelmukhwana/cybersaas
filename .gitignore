@@ -1,0 +1,39 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+.next/
+out/
+dist/
+build/
+
+# Go
+*.exe
+*.test
+coverage.out
+
+# .NET
+bin/
+obj/
+
+# IDE / OS
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local databases / data
+*.db
+*.sqlite
+*.sqlite3

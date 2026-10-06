@@ -1,0 +1,14 @@
+.env
+*.log
+
+bin/
+tmp/
+
+.vscode/
+.idea/
+
+node_modules/
+
+
+.env.*
+!.env.example

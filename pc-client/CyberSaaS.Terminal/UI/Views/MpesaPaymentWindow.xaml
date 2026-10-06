@@ -1,0 +1,98 @@
+<Window x:Class="CyberSaaS.Terminal.MpesaPaymentWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="M-Pesa Payment"
+        Width="520"
+        Height="560"
+        MinWidth="520"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="White">
+
+    <Grid Margin="32">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="M-Pesa Payment"
+                   FontSize="26"
+                   FontWeight="Bold"
+                   Foreground="{StaticResource CyberPrimaryBrush}"
+                   HorizontalAlignment="Center"/>
+
+        <StackPanel Grid.Row="1"
+                    Margin="0,25,0,25"
+                    HorizontalAlignment="Center">
+
+            <TextBlock Text="Amount Due"
+                       FontSize="14"
+                       Foreground="{StaticResource CyberMutedTextBrush}"
+                       HorizontalAlignment="Center"/>
+
+            <TextBlock x:Name="AmountTextBlock"
+                       FontSize="36"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource CyberPrimaryBrush}"
+                       Margin="0,5,0,0"
+                       HorizontalAlignment="Center"/>
+
+            <TextBlock x:Name="StatusTextBlock"
+                       Text="Enter the customer's M-Pesa phone number."
+                       FontSize="13"
+                       Foreground="{StaticResource CyberMutedTextBrush}"
+                       Margin="0,8,0,0"
+                       TextAlignment="Center"/>
+
+        </StackPanel>
+
+        <StackPanel Grid.Row="2"
+                    VerticalAlignment="Center">
+
+            <TextBlock Text="Customer phone number"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource CyberTextBrush}"
+                       Margin="0,0,0,8"/>
+
+            <TextBox x:Name="PhoneNumberTextBox"
+                     Height="52"
+                     FontSize="20"
+                     Padding="14"
+                     MaxLength="13"/>
+
+            <Button x:Name="SendButton"
+                    Content="📱  Send STK Push"
+                    Height="58"
+                    Margin="0,20,0,0"
+                    FontSize="17"
+                    Style="{StaticResource CyberPrimaryButton}"
+                    Click="SendButton_Click"/>
+
+            <TextBlock x:Name="WaitingTextBlock"
+                       Text="Waiting for the customer to enter their M-Pesa PIN..."
+                       FontSize="13"
+                       Foreground="{StaticResource CyberMutedTextBrush}"
+                       Margin="0,18,0,0"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed"/>
+
+        </StackPanel>
+
+        <Button Grid.Row="3"
+                Content="Back"
+                Width="100"
+                Height="38"
+                HorizontalAlignment="Center"
+                Margin="0,25,0,0"
+                Style="{StaticResource CyberSecondaryButton}"
+                Click="BackButton_Click"/>
+
+    </Grid>
+</Window>

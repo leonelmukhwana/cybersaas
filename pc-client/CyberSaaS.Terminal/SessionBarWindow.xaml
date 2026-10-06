@@ -1,0 +1,79 @@
+<Window x:Class="CyberSaaS.Terminal.SessionBarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="390"
+        Height="48"
+        Background="Transparent">
+
+    <Border BorderBrush="{StaticResource CyberBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Background="White"
+            Padding="8,5">
+
+        <Grid>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+
+                <TextBlock x:Name="SessionTitleTextBlock"
+                           Text="Pay After"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource CyberMutedTextBrush}"
+                           VerticalAlignment="Center"/>
+
+                <TextBlock x:Name="SessionValueTextBlock"
+                           Text="KES 0.00"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource CyberPrimaryBrush}"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"/>
+
+            </StackPanel>
+
+            <TextBlock x:Name="StatusTextBlock"
+                       Grid.Column="1"
+                       Text="ONLINE"
+                       VerticalAlignment="Center"
+                       FontSize="9"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource CyberPrimaryBrush}"
+                       Margin="8,0,8,0"/>
+
+            <Button x:Name="PauseResumeButton"
+                    Grid.Column="2"
+                    Content="Pause"
+                    Width="55"
+                    Height="28"
+                    FontSize="10"
+                    Padding="4,0"
+                    Style="{StaticResource CyberSecondaryButton}"
+                    Click="PauseResumeButton_Click"/>
+
+            <Button x:Name="EndSessionButton"
+                    Grid.Column="3"
+                    Content="End"
+                    Width="45"
+                    Height="28"
+                    FontSize="10"
+                    Padding="4,0"
+                    Style="{StaticResource CyberPrimaryButton}"
+                    Click="EndSessionButton_Click"/>
+
+        </Grid>
+    </Border>
+</Window>

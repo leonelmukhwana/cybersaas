@@ -1,0 +1,108 @@
+<UserControl x:Class="CyberSaaS.Terminal.UI.Views.CustomerSelectionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="520"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center">
+
+    <Border Background="White"
+            CornerRadius="16"
+            Padding="32"
+            Margin="20">
+
+        <StackPanel>
+
+            <!-- Title -->
+            <TextBlock Text="Customer Verification"
+                       FontSize="24"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource CyberTextBrush}"
+                       Margin="0,0,0,8"/>
+
+            <TextBlock Text="Select the customer type and search for the customer."
+                       FontSize="14"
+                       Foreground="{StaticResource CyberMutedTextBrush}"
+                       Margin="0,0,0,24"/>
+
+            <!-- Customer Type -->
+            <TextBlock Text="Customer Type"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource CyberTextBrush}"
+                       Margin="0,0,0,8"/>
+
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,20">
+
+                <RadioButton x:Name="AdultRadioButton"
+                             Content="Adult"
+                             IsChecked="True"
+                             GroupName="CustomerType"
+                             FontSize="14"
+                             Foreground="{StaticResource CyberTextBrush}"
+                             Margin="0,0,24,0"
+                             Checked="CustomerType_Checked"/>
+
+                <RadioButton x:Name="ChildRadioButton"
+                             Content="Child"
+                             GroupName="CustomerType"
+                             FontSize="14"
+                             Foreground="{StaticResource CyberTextBrush}"
+                             Checked="CustomerType_Checked"/>
+
+            </StackPanel>
+
+            <!-- Search Label -->
+            <TextBlock x:Name="SearchLabel"
+                       Text="ID Number"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource CyberTextBrush}"
+                       Margin="0,0,0,8"/>
+
+            <!-- Search Box -->
+            <TextBox x:Name="SearchTextBox"
+                     Height="44"
+                     FontSize="15"
+                     Padding="12,8"
+                     VerticalContentAlignment="Center"/>
+
+            <!-- Help -->
+            <TextBlock x:Name="SearchHelpTextBlock"
+                       Text="Enter the adult customer's national ID number."
+                       FontSize="12"
+                       Foreground="{StaticResource CyberMutedTextBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,7,0,24"/>
+
+            <!-- Status -->
+            <TextBlock x:Name="StatusTextBlock"
+                       FontSize="13"
+                       Foreground="#DC2626"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,16"/>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+
+                <Button Content="Cancel"
+                        Width="100"
+                        Height="40"
+                        Margin="0,0,10,0"
+                        Style="{StaticResource CyberSecondaryButton}"
+                        Click="CancelButton_Click"/>
+
+                <Button Content="Find Customer"
+                        Width="140"
+                        Height="40"
+                        Style="{StaticResource CyberPrimaryButton}"
+                        Click="LookupButton_Click"/>
+
+            </StackPanel>
+
+        </StackPanel>
+
+    </Border>
+
+</UserControl>

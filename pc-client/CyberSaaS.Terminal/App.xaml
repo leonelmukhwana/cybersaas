@@ -1,0 +1,260 @@
+﻿
+<Application x:Class="CyberSaaS.Terminal.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+
+    <Application.Resources>
+
+        <!-- ===================================================== -->
+        <!-- CyberSaaS Brand Colours                              -->
+        <!-- ===================================================== -->
+
+        <SolidColorBrush x:Key="CyberPrimaryBrush"
+                         Color="#0057B8"/>
+
+        <SolidColorBrush x:Key="CyberPrimaryHoverBrush"
+                         Color="#004A9F"/>
+
+        <SolidColorBrush x:Key="CyberPrimaryPressedBrush"
+                         Color="#003F87"/>
+
+        <SolidColorBrush x:Key="CyberLightBlueBrush"
+                         Color="#EAF3FF"/>
+
+        <SolidColorBrush x:Key="CyberBorderBrush"
+                         Color="#D6E4F5"/>
+
+        <SolidColorBrush x:Key="CyberTextBrush"
+                         Color="#172033"/>
+
+        <SolidColorBrush x:Key="CyberMutedTextBrush"
+                         Color="#64748B"/>
+
+        <SolidColorBrush x:Key="CyberWhiteBrush"
+                         Color="#FFFFFF"/>
+
+        <!-- ===================================================== -->
+        <!-- Primary Button                                       -->
+        <!-- ===================================================== -->
+
+        <Style x:Key="CyberPrimaryButton"
+               TargetType="Button">
+
+            <Setter Property="Background"
+                    Value="{StaticResource CyberPrimaryBrush}"/>
+
+            <Setter Property="Foreground"
+                    Value="White"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource CyberPrimaryBrush}"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1"/>
+
+            <Setter Property="FontWeight"
+                    Value="SemiBold"/>
+
+            <Setter Property="Cursor"
+                    Value="Hand"/>
+
+            <Setter Property="Padding"
+                    Value="20,0"/>
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="{StaticResource CyberPrimaryHoverBrush}"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsPressed"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="{StaticResource CyberPrimaryPressedBrush}"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.55"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+        </Style>
+
+        <!-- ===================================================== -->
+        <!-- Secondary Button                                     -->
+        <!-- ===================================================== -->
+
+        <Style x:Key="CyberSecondaryButton"
+               TargetType="Button">
+
+            <Setter Property="Background"
+                    Value="White"/>
+
+            <Setter Property="Foreground"
+                    Value="{StaticResource CyberPrimaryBrush}"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource CyberBorderBrush}"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1"/>
+
+            <Setter Property="FontWeight"
+                    Value="SemiBold"/>
+
+            <Setter Property="Cursor"
+                    Value="Hand"/>
+
+            <Setter Property="Padding"
+                    Value="20,0"/>
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="{StaticResource CyberLightBlueBrush}"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsPressed"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#DCEBFF"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.55"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+        </Style>
+
+        <!-- ===================================================== -->
+        <!-- TextBox                                               -->
+        <!-- ===================================================== -->
+
+        <Style TargetType="TextBox">
+
+            <Setter Property="Foreground"
+                    Value="{StaticResource CyberTextBrush}"/>
+
+            <Setter Property="Background"
+                    Value="White"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource CyberBorderBrush}"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1"/>
+
+            <Setter Property="Padding"
+                    Value="12,0"/>
+
+            <Setter Property="VerticalContentAlignment"
+                    Value="Center"/>
+
+        </Style>
+
+        <!-- ===================================================== -->
+        <!-- ComboBox                                              -->
+        <!-- ===================================================== -->
+
+        <Style TargetType="ComboBox">
+
+            <Setter Property="Foreground"
+                    Value="{StaticResource CyberTextBrush}"/>
+
+            <Setter Property="Background"
+                    Value="White"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource CyberBorderBrush}"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1"/>
+
+            <Setter Property="Padding"
+                    Value="10,0"/>
+
+        </Style>
+
+    </Application.Resources>
+
+</Application>
