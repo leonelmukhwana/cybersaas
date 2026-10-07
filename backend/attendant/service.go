@@ -71,6 +71,14 @@ func (s *Service) Create(
 		return Attendant{}, err
 	}
 
+	if err := s.repo.VerifyBranchHasNoActiveAttendant(
+		ctx,
+		tenantID,
+		req.BranchID,
+	); err != nil {
+		return Attendant{}, err
+	}
+
 	passwordHash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		return Attendant{}, fmt.Errorf("hash password: %w", err)

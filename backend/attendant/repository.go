@@ -326,6 +326,44 @@ func (r *Repository) VerifyBranchBelongsToTenant(
 	return nil
 }
 
+func (r *Repository) VerifyBranchHasNoActiveAttendant(
+	ctx context.Context,
+	tenantID string,
+	branchID string,
+) error {
+	var exists bool
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM attendant_branch_assignments aba
+			JOIN users u
+				ON u.id = aba.user_id
+				AND u.tenant_id = aba.tenant_id
+			WHERE aba.tenant_id = $1
+			  AND aba.branch_id = $2
+			  AND aba.unassigned_at IS NULL
+			  AND u.role = 'attendant'
+			  AND u.status = 'active'
+		)
+		`,
+		tenantID,
+		branchID,
+	).Scan(&exists)
+
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		return errors.New("branch already has an active attendant")
+	}
+
+	return nil
+}
+
 func (r *Repository) AssignBranch(
 	ctx context.Context,
 	tenantID string,
