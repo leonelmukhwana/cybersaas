@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -91,12 +92,13 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	)
 
 	if err != nil {
+		log.Printf("Password reset error: %v", err)
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "unable to process password reset request",
 		})
 		return
 	}
-
 	// Development only.
 	// Once email service is connected, this link is sent by email
 	// and must NOT be returned by the API.
