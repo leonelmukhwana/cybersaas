@@ -86,7 +86,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	resetLink, err := h.service.ForgotPassword(
+	_, err := h.service.ForgotPassword(
 		c.Request.Context(),
 		req.Email,
 	)
@@ -99,15 +99,11 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		})
 		return
 	}
-	// Development only.
-	// Once email service is connected, this link is sent by email
-	// and must NOT be returned by the API.
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":                "If an account exists with that email, a password reset link has been sent.",
-		"development_reset_link": resetLink,
+		"message": "If an account exists with that email, a password reset link has been sent.",
 	})
 }
-
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 
