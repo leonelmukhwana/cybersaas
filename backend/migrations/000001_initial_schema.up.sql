@@ -269,6 +269,10 @@ CREATE UNIQUE INDEX uq_attendant_one_active_branch
     WHERE unassigned_at IS NULL;
 
 
+CREATE UNIQUE INDEX uq_branch_one_active_attendant
+    ON attendant_branch_assignments(branch_id)
+    WHERE unassigned_at IS NULL;
+
 -- ============================================================
 -- LICENCE KEYS
 --
