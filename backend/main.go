@@ -158,10 +158,7 @@ func main() {
 	authRepository := auth.NewRepository(db)
 
 	emailService := email.NewService(email.Config{
-		Host:      cfg.SMTPHost,
-		Port:      cfg.SMTPPort,
-		Username:  cfg.SMTPUsername,
-		Password:  cfg.SMTPPassword,
+		APIKey:    os.Getenv("RESEND_API_KEY"),
 		FromEmail: cfg.SMTPFromEmail,
 		FromName:  cfg.SMTPFromName,
 	})
