@@ -19,11 +19,14 @@ export interface CreateAttendantRequest {
   branch_id: string;
 }
 
+
 export interface UpdateAttendantRequest {
   full_name: string;
   email?: string | null;
   phone?: string | null;
+  password?: string;
 }
+
 
 export interface ChangeAttendantStatusRequest {
   status: "active" | "inactive" | "suspended";

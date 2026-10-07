@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -158,6 +159,9 @@ export default function CyberOwnerAttendantsPage() {
   const [editPhone, setEditPhone] =
     useState("");
 
+  const [editPassword, setEditPassword] =
+    useState("");
+
   const [editBranchId, setEditBranchId] =
     useState("");
 
@@ -285,6 +289,8 @@ export default function CyberOwnerAttendantsPage() {
       attendant.phone ?? ""
     );
 
+    setEditPassword("");
+
     setEditBranchId(
       attendant.branch_id ?? ""
     );
@@ -297,6 +303,7 @@ export default function CyberOwnerAttendantsPage() {
     setEditFullName("");
     setEditEmail("");
     setEditPhone("");
+    setEditPassword("");
     setEditBranchId("");
   }
 
@@ -313,6 +320,9 @@ export default function CyberOwnerAttendantsPage() {
       full_name: editFullName.trim(),
       email: editEmail.trim() || null,
       phone: editPhone.trim() || null,
+      ...(editPassword.trim()
+        ? { password: editPassword }
+        : {}),
     };
 
     await updateAttendant(
@@ -741,6 +751,7 @@ export default function CyberOwnerAttendantsPage() {
                   )
                 }
                 required
+                autoComplete="new-password"
               />
             </div>
 
@@ -859,7 +870,7 @@ export default function CyberOwnerAttendantsPage() {
             </DialogTitle>
 
             <DialogDescription>
-              Update the attendant's details and branch assignment.
+              Update the attendant's details, password, and branch assignment.
             </DialogDescription>
           </DialogHeader>
 
@@ -883,6 +894,7 @@ export default function CyberOwnerAttendantsPage() {
                   )
                 }
                 required
+                disabled={saving}
               />
             </div>
 
@@ -902,6 +914,7 @@ export default function CyberOwnerAttendantsPage() {
                     event.target.value
                   )
                 }
+                disabled={saving}
               />
             </div>
 
@@ -921,7 +934,36 @@ export default function CyberOwnerAttendantsPage() {
                     event.target.value
                   )
                 }
+                disabled={saving}
               />
+            </div>
+
+            {/* Password */}
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-password">
+                New password
+              </Label>
+
+              <Input
+                id="edit-password"
+                type="password"
+                placeholder="Leave blank to keep current password"
+                minLength={8}
+                value={editPassword}
+                onChange={(event) =>
+                  setEditPassword(
+                    event.target.value
+                  )
+                }
+                autoComplete="new-password"
+                disabled={saving}
+              />
+
+              <p className="text-xs text-slate-500">
+                Leave blank if you do not want to change the password.
+                Minimum 8 characters when changing it.
+              </p>
             </div>
 
             {/* Branch */}
@@ -939,7 +981,7 @@ export default function CyberOwnerAttendantsPage() {
                     event.target.value
                   )
                 }
-                disabled={branchesLoading}
+                disabled={branchesLoading || saving}
                 className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[#0757B8] focus:ring-2 focus:ring-[#0757B8]/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">
@@ -989,7 +1031,9 @@ export default function CyberOwnerAttendantsPage() {
                 disabled={
                   saving ||
                   branchesLoading ||
-                  !editFullName.trim()
+                  !editFullName.trim() ||
+                  (!!editPassword.trim() &&
+                    editPassword.length < 8)
                 }
                 className="bg-[#0757B8] hover:bg-[#064A9D]"
               >

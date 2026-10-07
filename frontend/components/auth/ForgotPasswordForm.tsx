@@ -1,48 +1,129 @@
+﻿
+"use client";
+
 import Link from "next/link";
-import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
+import { FormEvent, useState } from "react";
 
-export const dynamic = "force-dynamic";
+import { authService } from "@/services/auth.service";
 
-export default function CyberOwnerForgotPasswordPage() {
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function ForgotPasswordForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setError("");
+    setSuccess(false);
+    setLoading(true);
+
+    try {
+      await authService.forgotPassword({
+        email: email.trim(),
+      });
+
+      setSuccess(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to process your request. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="relative min-h-screen bg-slate-50">
-      {/* TOP BRANDING */}
-      <div className="absolute left-0 right-0 top-0">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0757B8] font-bold text-white">
-              C
+    <div className="w-full max-w-md">
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+          Forgot your password?
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Enter your email address and we&apos;ll send you a password
+          reset link.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        {success ? (
+          <div className="space-y-5">
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              If an account exists with that email, a password reset
+              link has been sent.
             </div>
 
-            <span className="text-lg font-bold tracking-tight text-slate-950">
-              Cyber
-              <span className="text-[#0757B8]">
-                SaaS
-              </span>
-            </span>
-          </Link>
+            <div className="text-center">
+              <Link
+                href="/login"
+                className="text-sm font-semibold text-[#0757B8] hover:underline"
+              >
+                Back to login
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div
+                role="alert"
+                className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+              >
+                {error}
+              </div>
+            )}
 
-          <Link
-            href="/login/owner"
-            className="text-sm font-medium text-slate-500 transition hover:text-[#0757B8]"
-          >
-            Back to Login
-          </Link>
-        </div>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                Email address
+              </Label>
 
-      {/* CENTERED FORM */}
-      <div className="flex min-h-screen items-center justify-center px-5 py-24">
-        <ForgotPasswordForm />
-      </div>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+                autoComplete="email"
+                required
+                disabled={loading}
+                className="h-11"
+              />
+            </div>
 
-      {/* FOOTER */}
-      <div className="absolute bottom-0 left-0 right-0 py-5 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} CyberSaaS. All rights reserved.
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-11 w-full bg-[#0757B8] text-sm font-semibold hover:bg-[#064A9D]"
+            >
+              {loading
+                ? "Sending reset link..."
+                : "Send reset link"}
+            </Button>
+
+            <div className="text-center">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-slate-500 hover:text-[#0757B8] hover:underline"
+              >
+                Back to login
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
+

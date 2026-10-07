@@ -221,17 +221,11 @@ export default function LoginForm({ role = "owner" }: LoginFormProps) {
               <Label htmlFor="password">Password</Label>
 
               <Link
-                href={
-                  isSaaSOwner
-                    ? "/forgot-password/saas-owner"
-                    : isAttendant
-                      ? "/forgot-password/attendant"
-                      : "/forgot-password/owner"
-                }
-                className="text-sm font-medium text-[#0757B8] hover:underline"
-              >
-                Forgot password?
-              </Link>
+                    href="/forgot-password"
+                    className="text-sm font-medium text-[#0757B8] hover:underline"
+                  >
+                    Forgot password?
+            </Link>
             </div>
 
             <div className="relative">
