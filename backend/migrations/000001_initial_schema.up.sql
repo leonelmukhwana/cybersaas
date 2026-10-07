@@ -1,4 +1,28 @@
 -- ============================================================
+-- CYBERSAAS CONSOLIDATED INITIAL SCHEMA
+-- ============================================================
+-- Single source of truth for a fresh CyberSaaS database.
+--
+-- This migration consolidates the original migration history.
+-- Original migrations are preserved in migrations_old/ and
+-- migrations_backup/.
+--
+-- IMPORTANT:
+--   * Application/client supplies UUID primary keys where defined.
+--   * Sessions are retained for compliance requirements.
+--   * Compliance snapshots are immutable and retention protected.
+--   * Terminal operation is independent of SaaS subscription status.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
 -- CYBERSAAS
 -- INITIAL DATABASE SCHEMA
 --
@@ -1389,7 +1413,1278 @@ CREATE INDEX idx_monthly_reports_branch
 -- UPDATED_AT FUNCTION
 -- ============================================================
 
-CREATE OR REPLACE FUNCTION set_updated_at()
+
+
+
+-- ============================================================
+-- UPDATED_AT TRIGGERS
+-- ============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Optional: Scoped idempotency key
+ALTER TABLE idempotency_keys DROP CONSTRAINT idempotency_keys_key_key;
+CREATE UNIQUE INDEX uq_idempotency_tenant_key ON idempotency_keys (tenant_id, key);
+
+
+-- ============================================================
+-- END OF INITIAL SCHEMA
+-- ============================================================
+
+-- ============================================================
+-- SESSION PAUSE / RESUME
+-- ============================================================
+
+-- ============================================================
+-- SESSION PAUSE / RESUME
+-- ============================================================
+
+ALTER TABLE sessions
+ADD COLUMN paused_at TIMESTAMPTZ NULL;
+
+ALTER TABLE sessions
+ADD COLUMN total_paused_seconds BIGINT NOT NULL DEFAULT 0;
+
+CREATE INDEX idx_sessions_active_paused
+    ON sessions (terminal_id, status, paused_at);
+
+
+-- ============================================================
+-- CUSTOMER ID LOOKUP HASH
+-- ============================================================
+
+-- ============================================================
+-- CUSTOMER ID LOOKUP HASH
+-- ============================================================
+
+ALTER TABLE customers
+ADD COLUMN id_number_lookup_hash CHAR(64);
+
+CREATE INDEX idx_customers_branch_id_lookup_hash
+    ON customers (branch_id, id_number_lookup_hash);
+
+
+-- ============================================================
+-- TERMINAL COMMANDS
+-- ============================================================
+
+-- ============================================================
+-- TERMINAL COMMANDS
+-- ============================================================
+
+CREATE TYPE terminal_command_type AS ENUM (
+    'restart',
+    'shutdown'
+);
+
+CREATE TYPE terminal_command_status AS ENUM (
+    'pending',
+    'executed',
+    'failed',
+    'cancelled'
+);
+
+CREATE TABLE terminal_commands (
+    id UUID PRIMARY KEY,
+    terminal_id UUID NOT NULL REFERENCES terminals(id) ON DELETE CASCADE,
+
+    command terminal_command_type NOT NULL,
+    status terminal_command_status NOT NULL DEFAULT 'pending',
+
+    command_version BIGINT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    executed_at TIMESTAMPTZ,
+    acknowledged_at TIMESTAMPTZ,
+
+    error_message TEXT
+);
+
+CREATE INDEX idx_terminal_commands_pending
+    ON terminal_commands (terminal_id, status, command_version);
+
+CREATE INDEX idx_terminal_commands_created_at
+    ON terminal_commands (created_at);
+
+-- ============================================================
+-- TERMINAL CONTROL
+-- ============================================================
+
+-- Terminal lock/unlock state is independent of SaaS subscription status.
+-- A terminal keeps its last known state when the SaaS subscription expires
+-- or when the terminal temporarily loses internet connectivity.
+
+CREATE TYPE terminal_lock_state AS ENUM (
+    'unlocked',
+    'locked'
+);
+
+CREATE TABLE terminal_control_state (
+    terminal_id UUID PRIMARY KEY
+        REFERENCES terminals(id) ON DELETE CASCADE,
+
+    desired_state terminal_lock_state NOT NULL DEFAULT 'unlocked',
+
+    command_version BIGINT NOT NULL DEFAULT 1,
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_terminal_control_state_updated_at
+    ON terminal_control_state(updated_at);
+
+CREATE OR REPLACE FUNCTION create_terminal_control_state()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO terminal_control_state (
+        terminal_id,
+        desired_state,
+        command_version
+    )
+    VALUES (
+        NEW.id,
+        'unlocked',
+        1
+    )
+    ON CONFLICT (terminal_id) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_terminals_create_control_state
+AFTER INSERT ON terminals
+FOR EACH ROW
+EXECUTE FUNCTION create_terminal_control_state();
+
+-- ============================================================
+-- TERMINAL HEALTH
+-- ============================================================
+
+-- ============================================================
+-- TERMINAL HEALTH
+-- Latest health state reported by each terminal.
+-- ============================================================
+
+CREATE TABLE terminal_health (
+    terminal_id UUID PRIMARY KEY
+        REFERENCES terminals(id)
+        ON DELETE CASCADE,
+
+    status VARCHAR(20) NOT NULL DEFAULT 'healthy',
+
+    network_adapter_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    internet_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    dns_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    api_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    database_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    disk_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    memory_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    printer_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+    offline_queue_count INTEGER NOT NULL DEFAULT 0,
+
+    uptime_seconds BIGINT NOT NULL DEFAULT 0,
+
+    network_issue TEXT NOT NULL DEFAULT '',
+
+    issues JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    last_health_check TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT chk_terminal_health_status
+        CHECK (
+            status IN (
+                'healthy',
+                'attention',
+                'offline'
+            )
+        ),
+
+    CONSTRAINT chk_terminal_health_queue
+        CHECK (offline_queue_count >= 0),
+
+    CONSTRAINT chk_terminal_health_uptime
+        CHECK (uptime_seconds >= 0)
+);
+
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+
+CREATE INDEX idx_terminal_health_status
+    ON terminal_health(status);
+
+CREATE INDEX idx_terminal_health_last_seen
+    ON terminal_health(last_seen_at);
+
+
+-- ============================================================
+-- UPDATED_AT TRIGGER
+-- ============================================================
+
+CREATE TRIGGER trg_terminal_health_updated_at
+BEFORE UPDATE ON terminal_health
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS cpu_usage_percent NUMERIC(5,2)
+    NOT NULL DEFAULT 0.00;
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_cpu_usage
+CHECK (
+    cpu_usage_percent >= 0
+    AND cpu_usage_percent <= 100
+);
+
+
+-- ============================================================
+-- MEMORY
+-- Values are stored in bytes.
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS memory_total_bytes BIGINT
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS memory_used_bytes BIGINT
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS memory_free_bytes BIGINT
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_memory_total
+CHECK (memory_total_bytes >= 0);
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_memory_used
+CHECK (memory_used_bytes >= 0);
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_memory_free
+CHECK (memory_free_bytes >= 0);
+
+
+-- ============================================================
+-- DISK
+-- Values are stored in bytes.
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS disk_total_bytes BIGINT
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS disk_free_bytes BIGINT
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_disk_total
+CHECK (disk_total_bytes >= 0);
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_disk_free
+CHECK (disk_free_bytes >= 0);
+
+
+-- ============================================================
+-- NETWORK
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS lan_available BOOLEAN
+    NOT NULL DEFAULT FALSE;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS backend_latency_ms INTEGER
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_latency
+CHECK (backend_latency_ms >= 0);
+
+
+-- ============================================================
+-- AUDIO / SOUND
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS sound_available BOOLEAN
+    NOT NULL DEFAULT FALSE;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS sound_issue TEXT
+    NOT NULL DEFAULT '';
+
+
+-- ============================================================
+-- DRIVERS
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS drivers_available BOOLEAN
+    NOT NULL DEFAULT FALSE;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS driver_issue TEXT
+    NOT NULL DEFAULT '';
+
+
+-- ============================================================
+-- WINDOWS SECURITY / ANTIVIRUS
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS security_available BOOLEAN
+    NOT NULL DEFAULT FALSE;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS antivirus_enabled BOOLEAN
+    NOT NULL DEFAULT FALSE;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS security_issue TEXT
+    NOT NULL DEFAULT '';
+
+
+-- ============================================================
+-- OPERATING SYSTEM
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS os_name VARCHAR(100)
+    NOT NULL DEFAULT '';
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS os_version VARCHAR(100)
+    NOT NULL DEFAULT '';
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS os_architecture VARCHAR(50)
+    NOT NULL DEFAULT '';
+
+
+-- ============================================================
+-- PC CLIENT
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS client_version VARCHAR(50)
+    NOT NULL DEFAULT '';
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS client_status VARCHAR(20)
+    NOT NULL DEFAULT 'running';
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_client_status
+CHECK (
+    client_status IN (
+        'running',
+        'stopped',
+        'error',
+        'unknown'
+    )
+);
+
+
+-- ============================================================
+-- SYNCHRONIZATION
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS sync_pending_count INTEGER
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS sync_failed_count INTEGER
+    NOT NULL DEFAULT 0;
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS sync_status VARCHAR(20)
+    NOT NULL DEFAULT 'synced';
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS last_sync_at TIMESTAMPTZ;
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_sync_pending
+CHECK (sync_pending_count >= 0);
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_sync_failed
+CHECK (sync_failed_count >= 0);
+
+ALTER TABLE terminal_health
+ADD CONSTRAINT chk_terminal_health_sync_status
+CHECK (
+    sync_status IN (
+        'synced',
+        'pending',
+        'failed',
+        'offline'
+    )
+);
+
+
+-- ============================================================
+-- HEALTH MESSAGE
+-- Human-readable summary generated by the client/server.
+-- ============================================================
+
+ALTER TABLE terminal_health
+ADD COLUMN IF NOT EXISTS health_message TEXT
+    NOT NULL DEFAULT '';
+
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_terminal_health_client_status
+    ON terminal_health(client_status);
+
+CREATE INDEX IF NOT EXISTS idx_terminal_health_sync_status
+    ON terminal_health(sync_status);
+
+CREATE INDEX IF NOT EXISTS idx_terminal_health_updated_at
+    ON terminal_health(updated_at);
+
+-- ============================================================
+-- SUBSCRIPTIONS
+-- ============================================================
+
+-- ============================================================
+-- SUBSCRIPTION PLANS
+-- ============================================================
+
+CREATE TABLE subscription_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    name VARCHAR(50) NOT NULL UNIQUE,
+
+    included_branches INTEGER NOT NULL DEFAULT 1,
+    included_terminals INTEGER NOT NULL DEFAULT 5,
+
+    extra_branch_rate NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+    extra_terminal_rate NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+
+    monthly_price NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+
+    is_lifetime BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT subscription_plans_branches_check
+        CHECK (included_branches >= 0),
+
+    CONSTRAINT subscription_plans_terminals_check
+        CHECK (included_terminals >= 0),
+
+    CONSTRAINT subscription_plans_branch_rate_check
+        CHECK (extra_branch_rate >= 0),
+
+    CONSTRAINT subscription_plans_terminal_rate_check
+        CHECK (extra_terminal_rate >= 0),
+
+    CONSTRAINT subscription_plans_monthly_price_check
+        CHECK (monthly_price >= 0)
+);
+
+
+-- ============================================================
+-- DEFAULT PLANS
+-- ============================================================
+
+INSERT INTO subscription_plans (
+    name,
+    included_branches,
+    included_terminals,
+    extra_branch_rate,
+    extra_terminal_rate,
+    monthly_price,
+    is_lifetime,
+    is_active
+)
+VALUES
+(
+    'Starter',
+    1,
+    5,
+    1500.00,
+    100.00,
+    1500.00,
+    FALSE,
+    TRUE
+),
+(
+    'Pro',
+    3,
+    20,
+    1000.00,
+    75.00,
+    5000.00,
+    FALSE,
+    TRUE
+),
+(
+    'Lifetime Enterprise',
+    999,
+    999,
+    0.00,
+    0.00,
+    150000.00,
+    TRUE,
+    TRUE
+)
+ON CONFLICT (name) DO NOTHING;
+
+
+-- ============================================================
+-- SUBSCRIPTIONS
+-- ============================================================
+
+CREATE TABLE subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    plan_id UUID
+        REFERENCES subscription_plans(id)
+        ON DELETE RESTRICT,
+
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+
+    is_lifetime BOOLEAN NOT NULL DEFAULT FALSE,
+
+    account_balance NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+
+    current_period_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    current_period_end TIMESTAMPTZ,
+
+    peak_branches INTEGER NOT NULL DEFAULT 0,
+    peak_terminals INTEGER NOT NULL DEFAULT 0,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    is_trial BOOLEAN NOT NULL DEFAULT FALSE,
+
+    trial_ends_at TIMESTAMPTZ,
+
+    CONSTRAINT subscriptions_status_check
+        CHECK (
+            status IN (
+                'active',
+                'past_due',
+                'expired',
+                'cancelled'
+            )
+        ),
+
+    CONSTRAINT subscriptions_balance_check
+        CHECK (account_balance >= 0),
+
+    CONSTRAINT subscriptions_peak_branches_check
+        CHECK (peak_branches >= 0),
+
+    CONSTRAINT subscriptions_peak_terminals_check
+        CHECK (peak_terminals >= 0),
+
+    CONSTRAINT subscriptions_period_check
+        CHECK (
+            current_period_end IS NULL
+            OR current_period_end > current_period_start
+            OR is_lifetime = TRUE
+        ),
+
+    CONSTRAINT unique_tenant_subscription
+        UNIQUE (tenant_id)
+);
+
+
+CREATE INDEX idx_subscriptions_tenant_status
+    ON subscriptions(tenant_id, status);
+
+CREATE INDEX idx_subscriptions_status
+    ON subscriptions(status);
+
+CREATE INDEX idx_subscriptions_period_end
+    ON subscriptions(current_period_end);
+
+
+-- ============================================================
+-- SUBSCRIPTION PAYMENTS
+--
+-- Separate from the cyber's normal customer payments.
+-- ============================================================
+
+CREATE TABLE subscription_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    subscription_id UUID NOT NULL
+        REFERENCES subscriptions(id)
+        ON DELETE RESTRICT,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    amount NUMERIC(12,2) NOT NULL,
+
+    phone_number VARCHAR(15) NOT NULL,
+
+    payment_method VARCHAR(20) NOT NULL DEFAULT 'mpesa_stk',
+
+    mpesa_checkout_request_id VARCHAR(100),
+
+    mpesa_receipt_number VARCHAR(100),
+
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+
+    failure_reason VARCHAR(255),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    is_trial BOOLEAN NOT NULL DEFAULT FALSE,
+
+    trial_ends_at TIMESTAMPTZ,
+
+    CONSTRAINT subscription_payments_amount_check
+        CHECK (amount > 0),
+
+    CONSTRAINT subscription_payments_method_check
+        CHECK (
+            payment_method IN (
+                'mpesa_stk',
+                'manual',
+                'bank',
+                'other'
+            )
+        ),
+
+    CONSTRAINT subscription_payments_status_check
+        CHECK (
+            status IN (
+                'pending',
+                'completed',
+                'failed',
+                'cancelled'
+            )
+        )
+);
+
+
+CREATE UNIQUE INDEX uq_subscription_payment_checkout
+    ON subscription_payments(mpesa_checkout_request_id)
+    WHERE mpesa_checkout_request_id IS NOT NULL;
+
+
+CREATE UNIQUE INDEX uq_subscription_payment_receipt
+    ON subscription_payments(mpesa_receipt_number)
+    WHERE mpesa_receipt_number IS NOT NULL;
+
+
+CREATE INDEX idx_subscription_payments_tenant
+    ON subscription_payments(tenant_id, created_at DESC);
+
+CREATE INDEX idx_subscription_payments_subscription
+    ON subscription_payments(subscription_id, created_at DESC);
+
+CREATE INDEX idx_subscription_payments_status
+    ON subscription_payments(status);
+
+
+-- ============================================================
+-- SUBSCRIPTION LEDGER
+--
+-- Financial history.
+-- Entries are immutable.
+-- ============================================================
+
+CREATE TABLE subscription_ledger (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    subscription_id UUID NOT NULL
+        REFERENCES subscriptions(id)
+        ON DELETE RESTRICT,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    payment_id UUID
+        REFERENCES subscription_payments(id)
+        ON DELETE RESTRICT,
+
+    entry_type VARCHAR(10) NOT NULL,
+
+    amount NUMERIC(12,2) NOT NULL,
+
+    balance_after NUMERIC(12,2) NOT NULL,
+
+    description VARCHAR(255) NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT subscription_ledger_entry_type_check
+        CHECK (entry_type IN ('CREDIT', 'DEBIT')),
+
+    CONSTRAINT subscription_ledger_amount_check
+        CHECK (amount > 0),
+
+    CONSTRAINT subscription_ledger_balance_check
+        CHECK (balance_after >= 0)
+);
+
+
+CREATE INDEX idx_subscription_ledger_subscription
+    ON subscription_ledger(subscription_id, created_at DESC);
+
+CREATE INDEX idx_subscription_ledger_tenant
+    ON subscription_ledger(tenant_id, created_at DESC);
+
+CREATE INDEX idx_subscription_ledger_payment
+    ON subscription_ledger(payment_id);
+
+
+-- ============================================================
+-- UPDATED_AT TRIGGERS
+-- ============================================================
+
+CREATE TRIGGER trg_subscriptions_updated_at
+BEFORE UPDATE ON subscriptions
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+
+CREATE TRIGGER trg_subscription_payments_updated_at
+BEFORE UPDATE ON subscription_payments
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+
+-- ============================================================
+-- UPDATE SUBSCRIPTION USAGE PEAKS
+--
+-- Branch creation/update affects branch peak.
+-- Terminal creation/update affects terminal peak.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION update_subscription_usage_peaks()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_tenant_id UUID;
+    v_branch_count INTEGER;
+    v_terminal_count INTEGER;
+BEGIN
+
+    IF TG_TABLE_NAME = 'branches' THEN
+        v_tenant_id := NEW.tenant_id;
+
+    ELSIF TG_TABLE_NAME = 'terminals' THEN
+
+        SELECT tenant_id
+        INTO v_tenant_id
+        FROM branches
+        WHERE id = NEW.branch_id;
+
+    END IF;
+
+
+    IF v_tenant_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+
+    SELECT COUNT(*)
+    INTO v_branch_count
+    FROM branches
+    WHERE tenant_id = v_tenant_id
+      AND status = 'active';
+
+
+    SELECT COUNT(*)
+    INTO v_terminal_count
+    FROM terminals t
+    INNER JOIN branches b
+        ON b.id = t.branch_id
+    WHERE b.tenant_id = v_tenant_id
+      AND t.status = 'active';
+
+
+    UPDATE subscriptions
+    SET
+        peak_branches = GREATEST(
+            peak_branches,
+            v_branch_count
+        ),
+
+        peak_terminals = GREATEST(
+            peak_terminals,
+            v_terminal_count
+        ),
+
+        updated_at = NOW()
+
+    WHERE tenant_id = v_tenant_id;
+
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ============================================================
+-- USAGE PEAK TRIGGERS
+-- ============================================================
+
+CREATE TRIGGER trg_branches_subscription_usage
+AFTER INSERT OR UPDATE OF status
+ON branches
+FOR EACH ROW
+EXECUTE FUNCTION update_subscription_usage_peaks();
+
+
+CREATE TRIGGER trg_terminals_subscription_usage
+AFTER INSERT OR UPDATE OF status
+ON terminals
+FOR EACH ROW
+EXECUTE FUNCTION update_subscription_usage_peaks();
+
+
+-- ============================================================
+-- PREVENT LEDGER MODIFICATION
+--
+-- Subscription financial ledger entries cannot be edited
+-- or deleted after creation.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION prevent_subscription_ledger_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION
+        'Subscription ledger entries are immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_subscription_ledger_immutable
+BEFORE UPDATE OR DELETE
+ON subscription_ledger
+FOR EACH ROW
+EXECUTE FUNCTION prevent_subscription_ledger_mutation();
+
+
+-- ============================================================
+-- PROCESS SUBSCRIPTION LEDGER ENTRY
+--
+-- CREDIT:
+--   Adds money to the subscription account balance.
+--
+-- DEBIT:
+--   Deducts money from the subscription account balance.
+--
+-- The row is locked during the operation to prevent
+-- concurrent balance corruption.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION process_subscription_ledger_entry()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_balance NUMERIC(12,2);
+BEGIN
+
+    SELECT account_balance
+    INTO v_balance
+    FROM subscriptions
+    WHERE id = NEW.subscription_id
+    FOR UPDATE;
+
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Subscription % does not exist',
+            NEW.subscription_id;
+    END IF;
+
+
+    IF NEW.entry_type = 'CREDIT' THEN
+
+        v_balance := v_balance + NEW.amount;
+
+    ELSIF NEW.entry_type = 'DEBIT' THEN
+
+        IF v_balance < NEW.amount THEN
+            RAISE EXCEPTION
+                'Insufficient subscription balance';
+        END IF;
+
+        v_balance := v_balance - NEW.amount;
+
+    ELSE
+
+        RAISE EXCEPTION
+            'Invalid subscription ledger entry type';
+
+    END IF;
+
+
+    NEW.balance_after := v_balance;
+
+
+    UPDATE subscriptions
+    SET
+        account_balance = v_balance,
+        updated_at = NOW()
+    WHERE id = NEW.subscription_id;
+
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_process_subscription_ledger
+BEFORE INSERT
+ON subscription_ledger
+FOR EACH ROW
+EXECUTE FUNCTION process_subscription_ledger_entry();
+
+
+-- ============================================================
+-- END SUBSCRIPTIONS
+-- ============================================================
+-- ============================================================
+-- ACTIVE TRIAL INDEX
+-- ============================================================
+
+CREATE INDEX idx_subscriptions_active_trials
+    ON subscriptions (tenant_id, trial_ends_at)
+    WHERE is_trial = TRUE;
+
+
+-- ============================================================
+-- EXPENSES
+-- ============================================================
+
+CREATE TABLE expenses (
+    id UUID PRIMARY KEY,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    branch_id UUID NOT NULL
+        REFERENCES branches(id)
+        ON DELETE RESTRICT,
+
+    recorded_by UUID NOT NULL
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
+    category VARCHAR(100) NOT NULL,
+
+    description TEXT,
+
+    amount NUMERIC(14,2) NOT NULL
+        CHECK (amount > 0),
+
+    currency CHAR(3) NOT NULL DEFAULT 'KES',
+
+    payment_method VARCHAR(50) NOT NULL
+        CHECK (
+            payment_method IN (
+                'cash',
+                'mpesa',
+                'bank',
+                'card',
+                'other'
+            )
+        ),
+
+    reference VARCHAR(255),
+
+    expense_date DATE NOT NULL,
+
+    status VARCHAR(20) NOT NULL DEFAULT 'recorded'
+        CHECK (
+            status IN (
+                'recorded',
+                'voided'
+            )
+        ),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_expenses_tenant
+    ON expenses (tenant_id);
+
+CREATE INDEX idx_expenses_branch
+    ON expenses (branch_id);
+
+CREATE INDEX idx_expenses_branch_date
+    ON expenses (branch_id, expense_date);
+
+CREATE INDEX idx_expenses_tenant_date
+    ON expenses (tenant_id, expense_date);
+
+CREATE INDEX idx_expenses_recorded_by
+    ON expenses (recorded_by);
+
+-- ============================================================
+-- BRANCH / PLATFORM M-PESA CONFIGURATION
+-- ============================================================
+
+-- ============================================================
+-- M-PESA CONFIGURATIONS
+--
+-- Branch configuration:
+--   Used for customer payments to a Cyber Owner.
+--
+-- Platform configuration:
+--   Used only for CyberSaaS subscription payments.
+--
+-- Secrets are encrypted by the application before storage.
+-- ============================================================
+
+CREATE TABLE mpesa_configurations (
+    id UUID PRIMARY KEY,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    branch_id UUID NOT NULL
+        REFERENCES branches(id)
+        ON DELETE RESTRICT,
+
+    provider VARCHAR(50) NOT NULL DEFAULT 'daraja',
+
+    environment VARCHAR(20) NOT NULL DEFAULT 'sandbox',
+
+    business_short_code VARCHAR(50),
+    till_number VARCHAR(50),
+    paybill_number VARCHAR(50),
+
+    consumer_key_encrypted TEXT,
+    consumer_secret_encrypted TEXT,
+    passkey_encrypted TEXT,
+
+    account_reference VARCHAR(100),
+
+    callback_url TEXT,
+
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE(branch_id, provider),
+
+    CHECK (
+        environment IN ('sandbox', 'production')
+    )
+);
+
+CREATE INDEX idx_mpesa_config_tenant
+    ON mpesa_configurations(tenant_id);
+
+CREATE INDEX idx_mpesa_config_branch
+    ON mpesa_configurations(branch_id);
+
+CREATE INDEX idx_mpesa_config_active
+    ON mpesa_configurations(branch_id, active);
+
+
+-- ============================================================
+-- PLATFORM / SAAS M-PESA CONFIGURATION
+--
+-- This is NOT associated with a tenant or branch.
+--
+-- It is used for:
+--   - SaaS subscriptions
+--   - SaaS plan payments
+--   - Lifetime payments
+-- ============================================================
+
+CREATE TABLE platform_mpesa_configurations (
+    id UUID PRIMARY KEY,
+
+    provider VARCHAR(50) NOT NULL DEFAULT 'daraja',
+
+    environment VARCHAR(20) NOT NULL DEFAULT 'sandbox',
+
+    business_short_code VARCHAR(50),
+    till_number VARCHAR(50),
+    paybill_number VARCHAR(50),
+
+    consumer_key_encrypted TEXT,
+    consumer_secret_encrypted TEXT,
+    passkey_encrypted TEXT,
+
+    account_reference VARCHAR(100),
+
+    callback_url TEXT,
+
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE(provider),
+
+    CHECK (
+        environment IN ('sandbox', 'production')
+    )
+);
+
+CREATE INDEX idx_platform_mpesa_active
+    ON platform_mpesa_configurations(active);
+
+-- ============================================================
+-- CUSTOMER-SALE M-PESA STK
+-- ============================================================
+
+CREATE TABLE mpesa_stk_requests (
+    id UUID PRIMARY KEY,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id) ON DELETE RESTRICT,
+
+    branch_id UUID NOT NULL
+        REFERENCES branches(id) ON DELETE RESTRICT,
+
+    sale_id UUID NOT NULL
+        REFERENCES sales(id) ON DELETE RESTRICT,
+
+    payment_id UUID
+        REFERENCES payments(id) ON DELETE RESTRICT,
+
+    phone_number VARCHAR(20) NOT NULL,
+
+    amount NUMERIC(12,2) NOT NULL,
+
+    account_reference VARCHAR(100) NOT NULL,
+
+    transaction_description VARCHAR(255) NOT NULL,
+
+    merchant_request_id VARCHAR(100),
+
+    checkout_request_id VARCHAR(100),
+
+    response_code VARCHAR(20),
+
+    response_description TEXT,
+
+    customer_message TEXT,
+
+    status VARCHAR(30) NOT NULL DEFAULT 'pending',
+
+    result_code VARCHAR(20),
+
+    result_description TEXT,
+
+    mpesa_receipt_number VARCHAR(100),
+
+    transaction_date TIMESTAMPTZ,
+
+    callback_received_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT chk_mpesa_stk_status
+        CHECK (
+            status IN (
+                'pending',
+                'accepted',
+                'completed',
+                'failed',
+                'cancelled',
+                'timeout'
+            )
+        ),
+
+    CONSTRAINT chk_mpesa_stk_amount
+        CHECK (amount > 0),
+
+    CONSTRAINT uq_mpesa_stk_checkout_request
+        UNIQUE (checkout_request_id)
+);
+
+CREATE INDEX idx_mpesa_stk_tenant
+    ON mpesa_stk_requests(tenant_id);
+
+CREATE INDEX idx_mpesa_stk_branch
+    ON mpesa_stk_requests(branch_id);
+
+CREATE INDEX idx_mpesa_stk_sale
+    ON mpesa_stk_requests(sale_id);
+
+CREATE INDEX idx_mpesa_stk_payment
+    ON mpesa_stk_requests(payment_id);
+
+CREATE INDEX idx_mpesa_stk_status
+    ON mpesa_stk_requests(status);
+
+CREATE INDEX idx_mpesa_stk_created_at
+    ON mpesa_stk_requests(created_at);
+
+CREATE INDEX idx_mpesa_stk_merchant_request
+    ON mpesa_stk_requests(merchant_request_id);
+
+CREATE OR REPLACE FUNCTION update_mpesa_stk_requests_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -1397,9 +2692,337 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE TRIGGER trg_mpesa_stk_requests_updated_at
+BEFORE UPDATE ON mpesa_stk_requests
+FOR EACH ROW
+EXECUTE FUNCTION update_mpesa_stk_requests_updated_at();
 
 -- ============================================================
--- UPDATED_AT TRIGGERS
+-- SUBSCRIPTION M-PESA STK
+-- ============================================================
+
+-- ============================================================
+-- SUBSCRIPTION M-PESA STK REQUESTS
+--
+-- Used ONLY for CyberSaaS subscription payments.
+-- This is deliberately separate from mpesa_stk_requests,
+-- which belongs to cyber-customer sales.
+-- ============================================================
+
+CREATE TABLE subscription_mpesa_stk_requests (
+    id UUID PRIMARY KEY,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    subscription_id UUID NOT NULL
+        REFERENCES subscriptions(id)
+        ON DELETE RESTRICT,
+
+    subscription_payment_id UUID NOT NULL
+        REFERENCES subscription_payments(id)
+        ON DELETE RESTRICT,
+
+    phone_number VARCHAR(20) NOT NULL,
+
+    amount NUMERIC(12,2) NOT NULL,
+
+    account_reference VARCHAR(100) NOT NULL,
+
+    transaction_description VARCHAR(255) NOT NULL,
+
+    merchant_request_id VARCHAR(100),
+
+    checkout_request_id VARCHAR(100),
+
+    response_code VARCHAR(20),
+
+    response_description TEXT,
+
+    customer_message TEXT,
+
+    status VARCHAR(30) NOT NULL DEFAULT 'pending',
+
+    result_code VARCHAR(20),
+
+    result_description TEXT,
+
+    mpesa_receipt_number VARCHAR(100),
+
+    transaction_date TIMESTAMPTZ,
+
+    callback_received_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT chk_subscription_mpesa_stk_amount
+        CHECK (amount > 0),
+
+    CONSTRAINT chk_subscription_mpesa_stk_status
+        CHECK (
+            status IN (
+                'pending',
+                'accepted',
+                'completed',
+                'failed',
+                'cancelled',
+                'timeout'
+            )
+        ),
+
+    CONSTRAINT uq_subscription_mpesa_stk_payment
+        UNIQUE (subscription_payment_id),
+
+    CONSTRAINT uq_subscription_mpesa_stk_checkout
+        UNIQUE (checkout_request_id),
+
+    CONSTRAINT uq_subscription_mpesa_stk_receipt
+        UNIQUE (mpesa_receipt_number)
+);
+
+CREATE INDEX idx_subscription_mpesa_stk_tenant
+    ON subscription_mpesa_stk_requests(tenant_id);
+
+CREATE INDEX idx_subscription_mpesa_stk_subscription
+    ON subscription_mpesa_stk_requests(subscription_id);
+
+CREATE INDEX idx_subscription_mpesa_stk_payment
+    ON subscription_mpesa_stk_requests(subscription_payment_id);
+
+CREATE INDEX idx_subscription_mpesa_stk_status
+    ON subscription_mpesa_stk_requests(status);
+
+CREATE INDEX idx_subscription_mpesa_stk_created
+    ON subscription_mpesa_stk_requests(created_at);
+
+CREATE INDEX idx_subscription_mpesa_stk_merchant
+    ON subscription_mpesa_stk_requests(merchant_request_id);
+
+CREATE OR REPLACE FUNCTION update_subscription_mpesa_stk_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_subscription_mpesa_stk_updated_at
+BEFORE UPDATE ON subscription_mpesa_stk_requests
+FOR EACH ROW
+EXECUTE FUNCTION update_subscription_mpesa_stk_updated_at();
+
+-- ============================================================
+-- PASSWORD RESET TOKENS
+-- ============================================================
+
+CREATE TABLE password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    token_hash VARCHAR(64) NOT NULL,
+
+    expires_at TIMESTAMPTZ NOT NULL,
+
+    used_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX uq_password_reset_token_hash
+ON password_reset_tokens(token_hash);
+
+CREATE INDEX idx_password_reset_tokens_user
+ON password_reset_tokens(user_id);
+
+CREATE INDEX idx_password_reset_tokens_expiry
+ON password_reset_tokens(expires_at);
+
+-- ============================================================
+-- REPORTING / CAK COMPLIANCE
+-- ============================================================
+
+-- ============================================================
+-- REPORTING / CA COMPLIANCE
+-- Migration: 000006
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- COMPLIANCE REPORT SNAPSHOTS
+--
+-- Stores an immutable snapshot of a generated compliance
+-- report. The source operational records remain in their
+-- original tables.
+--
+-- retention_until is calculated when the snapshot is created
+-- and MUST NOT be extended merely because the report is viewed
+-- or regenerated.
+-- ------------------------------------------------------------
+
+CREATE TABLE compliance_report_snapshots (
+    id UUID PRIMARY KEY,
+
+    tenant_id UUID NOT NULL
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    branch_id UUID
+        REFERENCES branches(id)
+        ON DELETE RESTRICT,
+
+    generated_by UUID
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
+    report_type VARCHAR(50) NOT NULL,
+
+    period_start TIMESTAMPTZ NOT NULL,
+    period_end TIMESTAMPTZ NOT NULL,
+
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    retention_until TIMESTAMPTZ NOT NULL,
+
+    snapshot JSONB NOT NULL,
+
+    snapshot_hash VARCHAR(128),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CHECK (period_end > period_start),
+
+    CHECK (retention_until >= generated_at)
+);
+
+CREATE INDEX idx_compliance_snapshots_tenant
+    ON compliance_report_snapshots(tenant_id);
+
+CREATE INDEX idx_compliance_snapshots_branch
+    ON compliance_report_snapshots(branch_id);
+
+CREATE INDEX idx_compliance_snapshots_generated_by
+    ON compliance_report_snapshots(generated_by);
+
+CREATE INDEX idx_compliance_snapshots_type
+    ON compliance_report_snapshots(report_type);
+
+CREATE INDEX idx_compliance_snapshots_period
+    ON compliance_report_snapshots(period_start, period_end);
+
+CREATE INDEX idx_compliance_snapshots_retention
+    ON compliance_report_snapshots(retention_until);
+
+
+-- ------------------------------------------------------------
+-- PREVENT ACCIDENTAL MODIFICATION OF SNAPSHOT CONTENT
+-- ------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION prevent_compliance_snapshot_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+       OR NEW.branch_id IS DISTINCT FROM OLD.branch_id
+       OR NEW.generated_by IS DISTINCT FROM OLD.generated_by
+       OR NEW.report_type IS DISTINCT FROM OLD.report_type
+       OR NEW.period_start IS DISTINCT FROM OLD.period_start
+       OR NEW.period_end IS DISTINCT FROM OLD.period_end
+       OR NEW.generated_at IS DISTINCT FROM OLD.generated_at
+       OR NEW.retention_until IS DISTINCT FROM OLD.retention_until
+       OR NEW.snapshot IS DISTINCT FROM OLD.snapshot
+       OR NEW.snapshot_hash IS DISTINCT FROM OLD.snapshot_hash
+    THEN
+        RAISE EXCEPTION
+            'Compliance report snapshots are immutable';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_compliance_snapshot_immutable
+BEFORE UPDATE ON compliance_report_snapshots
+FOR EACH ROW
+EXECUTE FUNCTION prevent_compliance_snapshot_update();
+
+
+-- ------------------------------------------------------------
+-- PREVENT DELETING COMPLIANCE SNAPSHOTS BEFORE RETENTION
+-- ------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION prevent_compliance_snapshot_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.retention_until > NOW() THEN
+        RAISE EXCEPTION
+            'Compliance report snapshot is retained until %',
+            OLD.retention_until;
+    END IF;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_compliance_snapshot_retention
+BEFORE DELETE ON compliance_report_snapshots
+FOR EACH ROW
+EXECUTE FUNCTION prevent_compliance_snapshot_delete();
+
+
+-- ------------------------------------------------------------
+-- REPORT GENERATION AUDIT
+-- ------------------------------------------------------------
+
+CREATE TABLE report_generation_logs (
+    id UUID PRIMARY KEY,
+
+    tenant_id UUID
+        REFERENCES tenants(id)
+        ON DELETE RESTRICT,
+
+    branch_id UUID
+        REFERENCES branches(id)
+        ON DELETE RESTRICT,
+
+    generated_by UUID
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
+    user_role user_role,
+
+    report_type VARCHAR(50) NOT NULL,
+
+    period_start TIMESTAMPTZ NOT NULL,
+
+    period_end TIMESTAMPTZ NOT NULL,
+
+    format VARCHAR(20) NOT NULL DEFAULT 'json',
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CHECK (period_end > period_start)
+);
+
+CREATE INDEX idx_report_generation_tenant
+    ON report_generation_logs(tenant_id);
+
+CREATE INDEX idx_report_generation_branch
+    ON report_generation_logs(branch_id);
+
+CREATE INDEX idx_report_generation_user
+    ON report_generation_logs(generated_by);
+
+CREATE INDEX idx_report_generation_created
+    ON report_generation_logs(created_at);
+
+-- ============================================================
+-- UPDATED_AT TRIGGERS REMOVED FROM BASE ARE RECREATED HERE
 -- ============================================================
 
 CREATE TRIGGER trg_tenants_updated_at
@@ -1414,11 +3037,6 @@ EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER trg_branches_updated_at
 BEFORE UPDATE ON branches
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_terminals_updated_at
-BEFORE UPDATE ON terminals
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
@@ -1442,28 +3060,21 @@ BEFORE UPDATE ON sessions
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
-CREATE TRIGGER trg_payments_updated_at
-BEFORE UPDATE ON payments
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_terminal_sync_state_updated_at
-BEFORE UPDATE ON terminal_sync_state
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
-
 CREATE TRIGGER trg_branch_settings_updated_at
 BEFORE UPDATE ON branch_settings
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
+CREATE TRIGGER trg_daily_reports_updated_at
+BEFORE UPDATE ON daily_reports
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
 
-
--- Optional: Scoped idempotency key
-ALTER TABLE idempotency_keys DROP CONSTRAINT idempotency_keys_key_key;
-CREATE UNIQUE INDEX uq_idempotency_tenant_key ON idempotency_keys (tenant_id, key);
-
+CREATE TRIGGER trg_monthly_reports_updated_at
+BEFORE UPDATE ON monthly_reports
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
--- END OF INITIAL SCHEMA
+-- END CONSOLIDATED INITIAL SCHEMA
 -- ============================================================

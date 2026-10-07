@@ -272,8 +272,8 @@ func main() {
 
 	terminalService := terminal.NewService(
 		terminalRepository,
+		subscriptionService,
 	)
-
 	terminalHandler := terminal.NewHandler(
 		terminalService,
 	)

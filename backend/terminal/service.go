@@ -8,18 +8,20 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"cybersaas/backend/subscription"
 )
 
 type Service struct {
 	repo *Repository
+	subscription *subscription.Service
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo *Repository, subscriptionService *subscription.Service) *Service {
 	return &Service{
-		repo: repo,
+			repo:         repo,
+			subscription: subscriptionService,
 	}
 }
-
 // ============================================================
 // LICENCE KEYS
 // ============================================================
@@ -143,45 +145,49 @@ func (s *Service) RevokeLicenceKey(
 // ============================================================
 
 func (s *Service) RegisterTerminal(
-	ctx context.Context,
-	req RegisterTerminalRequest,
+    ctx context.Context,
+    req RegisterTerminalRequest,
 ) (*RegisterTerminalResponse, error) {
-	req.LicenceKey = strings.TrimSpace(req.LicenceKey)
-	req.MachineName = strings.TrimSpace(req.MachineName)
-	req.DeviceID = strings.TrimSpace(req.DeviceID)
+    req.LicenceKey = strings.TrimSpace(req.LicenceKey)
+    req.MachineName = strings.TrimSpace(req.MachineName)
+    req.DeviceID = strings.TrimSpace(req.DeviceID)
 
-	if err := validateTerminalInput(req); err != nil {
-		return nil, err
-	}
+    if err := validateTerminalInput(req); err != nil {
+        return nil, err
+    }
 
-	return s.repo.RegisterTerminal(ctx, req)
+    tenantID, err := s.repo.GetTenantIDByLicenceKey(ctx, req.LicenceKey)
+    if err != nil {
+        return nil, err
+    }
+
+    if s.subscription == nil {
+        return nil, errors.New("subscription service is not configured")
+    }
+
+    if err := s.subscription.CanCreateTerminal(ctx, tenantID); err != nil {
+        return nil, err
+    }
+
+    return s.repo.RegisterTerminal(ctx, req)
 }
 
-// AuthenticateTerminal implements middleware.TerminalAuthenticator.
-//
-// IMPORTANT:
-// The middleware already SHA-256 hashes the permanent terminal
-// credential before calling this method.
-//
-// Therefore this method receives credentialHash directly and
-// passes it to the repository without hashing it again.
 func (s *Service) AuthenticateTerminal(
-	ctx context.Context,
-	credentialHash string,
+    ctx context.Context,
+    credentialHash string,
 ) (string, string, string, error) {
-	credentialHash = strings.TrimSpace(credentialHash)
+    if credentialHash == "" {
+        return "", "", "", errors.New(
+            "credential hash is required",
+        )
+    }
 
-	if credentialHash == "" {
-		return "", "", "", errors.New(
-			"credential hash is required",
-		)
-	}
-
-	return s.repo.AuthenticateTerminal(
-		ctx,
-		credentialHash,
-	)
+    return s.repo.AuthenticateTerminal(
+        ctx,
+        credentialHash,
+    )
 }
+
 
 // AuthenticateTerminalRequest is used by the HTTP terminal
 // authentication endpoint.

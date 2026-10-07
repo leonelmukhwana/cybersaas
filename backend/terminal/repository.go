@@ -38,6 +38,29 @@ func generateSecret(bytesLength int) (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
+const licenceKeyAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+func generateLicenceKey() (string, error) {
+	const keyLength = 9
+
+	buf := make([]byte, keyLength)
+
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+
+	for i := range buf {
+		buf[i] = licenceKeyAlphabet[int(buf[i])%len(licenceKeyAlphabet)]
+	}
+
+	return fmt.Sprintf(
+		"%s-%s-%s",
+		string(buf[0:3]),
+		string(buf[3:6]),
+		string(buf[6:9]),
+	), nil
+}
+
 func hashSecret(value string) string {
 	sum := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(sum[:])
@@ -91,7 +114,7 @@ func (r *Repository) CreateLicenceKey(
 	createdBy string,
 	expiresAt time.Time,
 ) (*LicenceKey, string, error) {
-	plainKey, err := generateSecret(24)
+	plainKey, err := generateLicenceKey()
 	if err != nil {
 		return nil, "", err
 	}
@@ -258,6 +281,46 @@ func (r *Repository) RevokeLicenceKey(
 	}
 
 	return nil
+}
+
+// GetTenantIDByLicenceKey returns the tenant associated with a valid
+// unused licence key. It does not consume the licence.
+func (r *Repository) GetTenantIDByLicenceKey(
+	ctx context.Context,
+	licenceKey string,
+) (string, error) {
+	keyHash := hashSecret(licenceKey)
+
+	var tenantID string
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT lk.tenant_id
+		FROM licence_keys lk
+		INNER JOIN branches b
+			ON b.id = lk.branch_id
+			AND b.tenant_id = lk.tenant_id
+		WHERE lk.licence_key_hash = $1
+		  AND lk.used_at IS NULL
+		  AND lk.revoked_at IS NULL
+		  AND (lk.expires_at IS NULL OR lk.expires_at > NOW())
+		  AND b.status = 'active'
+		`,
+		keyHash,
+	).Scan(&tenantID)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", errors.New(
+				"invalid, expired, revoked, or already used licence key",
+			)
+		}
+
+		return "", err
+	}
+
+	return tenantID, nil
 }
 
 // ============================================================

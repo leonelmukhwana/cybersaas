@@ -12,3 +12,5 @@ node_modules/
 
 .env.*
 !.env.example
+migrations_backup/
+migrations_old/
