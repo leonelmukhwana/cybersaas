@@ -18,6 +18,7 @@ import (
 	"cybersaas/backend/config"
 	"cybersaas/backend/customer"
 	"cybersaas/backend/database"
+	"cybersaas/backend/email"
 	"cybersaas/backend/expenses"
 	"cybersaas/backend/middleware"
 	"cybersaas/backend/mpesa"
@@ -156,11 +157,22 @@ func main() {
 
 	authRepository := auth.NewRepository(db)
 
+	emailService := email.NewService(email.Config{
+		Host:      cfg.SMTPHost,
+		Port:      cfg.SMTPPort,
+		Username:  cfg.SMTPUsername,
+		Password:  cfg.SMTPPassword,
+		FromEmail: cfg.SMTPFromEmail,
+		FromName:  cfg.SMTPFromName,
+	})
+
 	authService := auth.NewService(
 		authRepository,
 		tokenManager,
 		resetURL,
 	)
+
+	authService.SetEmailSender(emailService)
 
 	authHandler := auth.NewHandler(authService)
 
