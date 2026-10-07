@@ -421,10 +421,19 @@ func (r *Repository) AssignBranch(
 	if err != nil {
 		var pgErr *pgconn.PgError
 
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23505" {
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			switch pgErr.ConstraintName {
+			case "uq_attendant_one_active_branch":
 				return errors.New(
 					"attendant already has an active branch assignment",
+				)
+			case "uq_branch_one_active_attendant":
+				return errors.New(
+					"branch already has an active attendant",
+				)
+			default:
+				return errors.New(
+					"attendant branch assignment violates a uniqueness constraint",
 				)
 			}
 		}
