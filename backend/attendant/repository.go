@@ -234,7 +234,40 @@ func (r *Repository) UpdateAttendant(
 	tenantID string,
 	attendantID string,
 	req UpdateAttendantRequest,
+	passwordHash *string,
 ) error {
+	if passwordHash != nil {
+		result, err := r.db.Exec(
+			ctx,
+			`
+			UPDATE users
+			SET
+				full_name = $1,
+				email = $2,
+				phone = $3,
+				password_hash = $4
+			WHERE id = $5
+			  AND tenant_id = $6
+			  AND role = 'attendant'
+			`,
+			req.FullName,
+			req.Email,
+			req.Phone,
+			*passwordHash,
+			attendantID,
+			tenantID,
+		)
+		if err != nil {
+			return err
+		}
+
+		if result.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+
+		return nil
+	}
+
 	result, err := r.db.Exec(
 		ctx,
 		`

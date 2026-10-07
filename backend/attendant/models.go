@@ -27,6 +27,7 @@ type UpdateAttendantRequest struct {
 	FullName string  `json:"full_name"`
 	Email    *string `json:"email,omitempty"`
 	Phone    *string `json:"phone,omitempty"`
+	Password *string `json:"password,omitempty"`
 }
 
 type ChangeStatusRequest struct {

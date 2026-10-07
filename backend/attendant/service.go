@@ -187,11 +187,33 @@ func (s *Service) Update(
 		}
 	}
 
+	var passwordHash *string
+
+	if req.Password != nil {
+		password := strings.TrimSpace(*req.Password)
+
+		if password == "" {
+			return errors.New("password cannot be empty")
+		}
+
+		if len(password) < 8 {
+			return errors.New("password must be at least 8 characters")
+		}
+
+		hash, err := auth.HashPassword(password)
+		if err != nil {
+			return fmt.Errorf("hash password: %w", err)
+		}
+
+		passwordHash = &hash
+	}
+
 	if err := s.repo.UpdateAttendant(
 		ctx,
 		tenantID,
 		id,
 		req,
+		passwordHash,
 	); err != nil {
 		return err
 	}
