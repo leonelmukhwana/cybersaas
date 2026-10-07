@@ -500,7 +500,6 @@ func (r *Repository) CreateAuditLog(
 		tenantID,
 		userID,
 		action,
-		"attendant",
 		entityID,
 		reason,
 	)
