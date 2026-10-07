@@ -303,7 +303,13 @@ func (r *Repository) UpdateStatus(
 	attendantID string,
 	status string,
 ) error {
-	result, err := r.db.Exec(
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(
 		ctx,
 		`
 		UPDATE users
@@ -324,7 +330,25 @@ func (r *Repository) UpdateStatus(
 		return ErrNotFound
 	}
 
-	return nil
+	if status == "inactive" || status == "suspended" {
+		_, err = tx.Exec(
+			ctx,
+			`
+			UPDATE attendant_branch_assignments
+			SET unassigned_at = NOW()
+			WHERE user_id = $1
+			  AND tenant_id = $2
+			  AND unassigned_at IS NULL
+			`,
+			attendantID,
+			tenantID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) VerifyBranchBelongsToTenant(
