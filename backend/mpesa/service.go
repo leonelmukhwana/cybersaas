@@ -562,7 +562,6 @@ func (s *Service) InitiateTerminalSTKPush(
 		return nil, err
 	}
 
-	// Make sure the branch belongs to this tenant.
 	if err := s.repository.VerifyBranchBelongsToTenant(
 		ctx,
 		tenantID,
@@ -883,15 +882,12 @@ func (s *Service) ProcessSTKCallback(
 		return nil, errors.New("checkout request id is required")
 	}
 
-	// First try a normal cyber-café/customer payment.
 	stkRequest, normalErr :=
 		s.repository.GetSTKRequestByCheckoutRequestID(
 			ctx,
 			checkoutRequestID,
 		)
 
-	// If it is not a normal payment, try a CyberSaaS
-	// subscription payment.
 	if normalErr != nil {
 		subscriptionSTKRequest, subscriptionErr :=
 			s.repository.GetSubscriptionSTKRequestByCheckoutRequestID(
@@ -926,8 +922,6 @@ func (s *Service) processNormalSTKCallback(
 		return nil, ErrSTKRequestNotFound
 	}
 
-	// Preserve the existing idempotent behaviour for normal
-	// customer/terminal STK requests.
 	if stkRequest.Status == "completed" ||
 		stkRequest.Status == "failed" ||
 		stkRequest.Status == "cancelled" ||
@@ -938,7 +932,6 @@ func (s *Service) processNormalSTKCallback(
 	resultCode := strconv.FormatInt(callback.ResultCode, 10)
 	resultDescription := strings.TrimSpace(callback.ResultDesc)
 
-	// Safaricom reported a failed/cancelled transaction.
 	if callback.ResultCode != 0 {
 		if err := s.repository.UpdateSTKFailed(
 			ctx,
@@ -976,9 +969,6 @@ func (s *Service) processNormalSTKCallback(
 		return nil, err
 	}
 
-	// A branch/customer STK request is linked to the normal
-	// cyber-café payment record. Confirm that payment after
-	// Safaricom reports a successful transaction.
 	if stkRequest.PaymentID != nil &&
 		*stkRequest.PaymentID != "" {
 
@@ -1033,7 +1023,6 @@ func (s *Service) processSubscriptionSTKCallback(
 	resultCode := strconv.FormatInt(callback.ResultCode, 10)
 	resultDescription := strings.TrimSpace(callback.ResultDesc)
 
-	// Safaricom reported a failed/cancelled subscription payment.
 	if callback.ResultCode != 0 {
 		if err := s.repository.UpdateSubscriptionSTKFailed(
 			ctx,
@@ -1044,9 +1033,6 @@ func (s *Service) processSubscriptionSTKCallback(
 			return nil, err
 		}
 
-		// Mark the corresponding subscription payment as failed.
-		// MarkPaymentFailed is idempotent and will not turn an
-		// already-completed payment into a failed payment.
 		if err := s.subscriptionRepo.MarkPaymentFailed(
 			ctx,
 			stkRequest.SubscriptionPaymentID,
@@ -1058,9 +1044,6 @@ func (s *Service) processSubscriptionSTKCallback(
 			)
 		}
 
-		// A subscription STK request has a different model from a
-		// normal STK request. Return the normal STK representation
-		// expected by the callback handler.
 		return subscriptionSTKAsSTKRequest(stkRequest), nil
 	}
 
@@ -1074,7 +1057,6 @@ func (s *Service) processSubscriptionSTKCallback(
 		)
 	}
 
-	// Update the M-Pesa STK tracking record first.
 	if err := s.repository.UpdateSubscriptionSTKCompleted(
 		ctx,
 		stkRequest.ID,
@@ -1086,19 +1068,6 @@ func (s *Service) processSubscriptionSTKCallback(
 		return nil, err
 	}
 
-	// MarkPaymentCompleted performs the important subscription
-	// transaction:
-	//
-	// - locks the subscription payment
-	// - verifies the selected plan
-	// - activates/reactivates the subscription
-	// - converts trial to paid when appropriate
-	// - extends an existing paid period
-	// - updates account balance
-	// - creates the immutable credit ledger entry
-	//
-	// It is also idempotent, so a duplicate Safaricom callback
-	// cannot extend the subscription twice.
 	if err := s.subscriptionRepo.MarkPaymentCompleted(
 		ctx,
 		stkRequest.SubscriptionPaymentID,
@@ -1268,6 +1237,11 @@ func (s *Service) InitiateSubscriptionSTKPush(
 		return nil, err
 	}
 
+	config, err := LoadPlatformDarajaConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	stkID := uuid.New().String()
 
 	err = s.repository.CreateSubscriptionSTKRequest(
@@ -1279,15 +1253,10 @@ func (s *Service) InitiateSubscriptionSTKPush(
 			SubscriptionPaymentID:  subscriptionPayment.ID,
 			PhoneNumber:            formattedPhone,
 			Amount:                 amountText,
-			AccountReference:       "CYBERSAAS",
+			AccountReference:       config.AccountReference,
 			TransactionDescription: "CyberSaaS subscription payment",
 		},
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	config, err := LoadPlatformDarajaConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -1299,7 +1268,7 @@ func (s *Service) InitiateSubscriptionSTKPush(
 		STKPushRequest{
 			Amount:           numericAmount,
 			PhoneNumber:      formattedPhone,
-			AccountReference: "CYBERSAAS",
+			AccountReference: config.AccountReference,
 			TransactionDesc:  "CyberSaaS subscription payment",
 		},
 	)
@@ -1349,7 +1318,7 @@ func (s *Service) InitiateSubscriptionSTKPush(
 		SubscriptionPaymentID:  subscriptionPayment.ID,
 		PhoneNumber:            formattedPhone,
 		Amount:                 amountText,
-		AccountReference:       "CYBERSAAS",
+		AccountReference:       config.AccountReference,
 		TransactionDescription: "CyberSaaS subscription payment",
 		MerchantRequestID:      &merchantRequestID,
 		CheckoutRequestID:      &checkoutRequestID,
