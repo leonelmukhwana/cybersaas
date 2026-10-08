@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -22,7 +23,13 @@ namespace CyberSaaS.Terminal;
 public partial class MainWindow : Window
 {
     private const string ApiBaseUrl =
-        "http://localhost:8080/api/";
+        "https://cybersaas.onrender.com/api/";
+
+#if DEBUG
+    private const bool IsTestBuild = true;
+#else
+    private const bool IsTestBuild = false;
+#endif
 
     private readonly HttpClient _httpClient;
     private readonly TerminalSessionApi _terminalSessionApi;
@@ -285,14 +292,38 @@ public partial class MainWindow : Window
         string columnName,
         string columnDefinition)
     {
+        string sql =
+            (columnName, columnDefinition) switch
+            {
+                (
+                    "LastProcessedCommandVersion",
+                    "INTEGER NOT NULL DEFAULT 0"
+                ) =>
+                    @"
+                    ALTER TABLE terminal_local_state
+                    ADD COLUMN LastProcessedCommandVersion
+                    INTEGER NOT NULL DEFAULT 0;
+                    ",
+
+                (
+                    "LastCommandResult",
+                    "TEXT NULL"
+                ) =>
+                    @"
+                    ALTER TABLE terminal_local_state
+                    ADD COLUMN LastCommandResult
+                    TEXT NULL;
+                    ",
+
+                _ =>
+                    throw new ArgumentException(
+                        "Unsupported terminal local-state column.",
+                        nameof(columnName))
+            };
+
         try
         {
-            db.Database.ExecuteSqlRaw(
-                $@"
-                ALTER TABLE terminal_local_state
-                ADD COLUMN {columnName}
-                {columnDefinition};
-                ");
+            db.Database.ExecuteSqlRaw(sql);
         }
         catch
         {
@@ -708,8 +739,8 @@ public partial class MainWindow : Window
             RegisterTerminalApiResponse? result =
                 JsonSerializer.Deserialize<
                     RegisterTerminalApiResponse>(
-                        responseBody,
-                        JsonOptions);
+                    responseBody,
+                    JsonOptions);
 
             if (result?.Data == null)
             {
@@ -829,6 +860,10 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(
                 registration.Credential))
         {
+            TerminalStorage.Delete();
+            _registration = null;
+            _heartbeatTimer.Stop();
+            ShowRegistrationScreen();
             return;
         }
 
@@ -848,6 +883,20 @@ public partial class MainWindow : Window
                     "terminals/auth",
                     request);
 
+            if (response.StatusCode ==
+                System.Net.HttpStatusCode.Unauthorized)
+            {
+                _heartbeatTimer.Stop();
+
+                TerminalStorage.Delete();
+
+                _registration = null;
+
+                ShowRegistrationScreen();
+
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 _heartbeatTimer.Stop();
@@ -860,8 +909,8 @@ public partial class MainWindow : Window
             TerminalAuthApiResponse? result =
                 JsonSerializer.Deserialize<
                     TerminalAuthApiResponse>(
-                        responseBody,
-                        JsonOptions);
+                    responseBody,
+                    JsonOptions);
 
             if (result?.Data == null)
             {
@@ -888,6 +937,8 @@ public partial class MainWindow : Window
         }
         catch
         {
+            // Keep the local registration during temporary
+            // network/backend failures.
             _heartbeatTimer.Stop();
         }
     }
@@ -1728,8 +1779,11 @@ public partial class MainWindow : Window
 
         Show();
 
-        WindowState =
-            WindowState.Maximized;
+        if (!IsTestBuild)
+        {
+            WindowState =
+                WindowState.Maximized;
+        }
 
         Activate();
         Focus();
@@ -2224,6 +2278,11 @@ public partial class MainWindow : Window
     private static bool ExecuteWindowsShutdownCommand(
         string command)
     {
+        if (IsTestBuild)
+        {
+            return true;
+        }
+
         string arguments;
 
         switch (command)
@@ -2276,9 +2335,6 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            // CANCEL_SHUTDOWN needs the result immediately.
-            // Restart/shutdown may terminate this process, so we
-            // only wait briefly.
             if (command == "CANCEL_SHUTDOWN")
             {
                 process.WaitForExit(3000);
