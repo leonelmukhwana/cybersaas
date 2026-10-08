@@ -13,8 +13,18 @@ func RegisterRoutes(
 	tokenManager *auth.TokenManager,
 	requireActiveSubscription gin.HandlerFunc,
 ) {
-	mpesa := router.Group("/mpesa")
+	// ============================================================
+	// SAFARICOM DARАJA CALLBACK
+	// ============================================================
+	// This endpoint must be public because Safaricom does not
+	// send our application's JWT.
+	callback := router.Group("/mpesa")
+	callback.POST("/callback", handler.Callback)
 
+	// ============================================================
+	// AUTHENTICATED M-PESA APPLICATION ROUTES
+	// ============================================================
+	mpesa := router.Group("/mpesa")
 	mpesa.Use(middleware.AuthMiddleware(tokenManager))
 
 	// ============================================================
@@ -23,8 +33,6 @@ func RegisterRoutes(
 
 	branch := mpesa.Group("/branches/:branchID")
 
-	// Branch configuration is owner-only and requires
-	// an active subscription.
 	branchConfig := branch.Group("")
 	branchConfig.Use(
 		requireActiveSubscription,
@@ -35,8 +43,6 @@ func RegisterRoutes(
 	branchConfig.PUT("/config", handler.SaveBranch)
 	branchConfig.DELETE("/config", handler.DeleteBranch)
 
-	// Customer payment STK Push is a normal business operation,
-	// so it requires an active subscription.
 	branch.Use(requireActiveSubscription)
 
 	branch.POST(
@@ -49,7 +55,6 @@ func RegisterRoutes(
 	// CYBERSAAS SUBSCRIPTION M-PESA
 	// ============================================================
 
-	// IMPORTANT:
 	// Do NOT apply requireActiveSubscription here.
 	// An expired trial/subscription must still be able to
 	// initiate payment to activate/reactivate the subscription.

@@ -1,4 +1,3 @@
-
 import type {
   Service,
   ServiceListResponse,
@@ -8,9 +7,12 @@ import type {
   ServiceQueryParams,
 } from "@/types/service";
 
-const API_URL =
+const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8080/api";
+  "http://localhost:8080"
+).replace(/\/+$/, "");
+
+const API_BASE_URL = `${API_URL}/api`;
 
 class ServiceService {
   private getHeaders(token: string) {
@@ -41,7 +43,7 @@ class ServiceService {
     );
 
     const response = await fetch(
-      `${API_URL}/services?${searchParams.toString()}`,
+      `${API_BASE_URL}/services?${searchParams.toString()}`,
       {
         method: "GET",
         headers: this.getHeaders(token),
@@ -67,7 +69,7 @@ class ServiceService {
     searchParams.set("branch_id", branchId);
 
     const response = await fetch(
-      `${API_URL}/services/${serviceId}?${searchParams.toString()}`,
+      `${API_BASE_URL}/services/${serviceId}?${searchParams.toString()}`,
       {
         method: "GET",
         headers: this.getHeaders(token),
@@ -88,7 +90,7 @@ class ServiceService {
     data: CreateServiceRequest,
   ): Promise<Service> {
     const response = await fetch(
-      `${API_URL}/services`,
+      `${API_BASE_URL}/services`,
       {
         method: "POST",
         headers: this.getHeaders(token),
@@ -116,7 +118,7 @@ class ServiceService {
     searchParams.set("branch_id", branchId);
 
     const response = await fetch(
-      `${API_URL}/services/${serviceId}?${searchParams.toString()}`,
+      `${API_BASE_URL}/services/${serviceId}?${searchParams.toString()}`,
       {
         method: "PUT",
         headers: this.getHeaders(token),
@@ -144,7 +146,7 @@ class ServiceService {
     searchParams.set("branch_id", branchId);
 
     const response = await fetch(
-      `${API_URL}/services/${serviceId}/status?${searchParams.toString()}`,
+      `${API_BASE_URL}/services/${serviceId}/status?${searchParams.toString()}`,
       {
         method: "PATCH",
         headers: this.getHeaders(token),

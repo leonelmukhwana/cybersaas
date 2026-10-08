@@ -1,6 +1,9 @@
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8080"
+).replace(/\/+$/, "");
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_BASE_URL = `${API_URL}/api`;
 
 export type ComplianceReportType = "cak_compliance";
 
@@ -42,9 +45,40 @@ class ReportService {
     };
   }
 
+  private async getErrorMessage(
+    response: Response,
+    fallback: string,
+  ): Promise<string> {
+    try {
+      const text = await response.text();
+
+      if (!text.trim()) {
+        return fallback;
+      }
+
+      try {
+        const data = JSON.parse(text);
+
+        if (data?.error) {
+          return data.error;
+        }
+
+        if (data?.message) {
+          return data.message;
+        }
+      } catch {
+        return text;
+      }
+    } catch {
+      // Ignore response parsing errors.
+    }
+
+    return fallback;
+  }
+
   async generateComplianceReport(
     token: string,
-    data: GenerateComplianceReportRequest
+    data: GenerateComplianceReportRequest,
   ): Promise<ComplianceReportResponse> {
     const response = await fetch(
       `${API_BASE_URL}/reports/compliance`,
@@ -52,23 +86,24 @@ class ReportService {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(data),
-      }
+      },
     );
-
-    const result = await response.json();
 
     if (!response.ok) {
       throw new Error(
-        result?.error || "Failed to generate compliance report"
+        await this.getErrorMessage(
+          response,
+          "Failed to generate compliance report",
+        ),
       );
     }
 
-    return result;
+    return response.json();
   }
 
   async listComplianceReports(
     token: string,
-    branchId?: string
+    branchId?: string,
   ): Promise<ComplianceReportsResponse> {
     const params = new URLSearchParams();
 
@@ -79,45 +114,49 @@ class ReportService {
     const query = params.toString();
 
     const response = await fetch(
-      `${API_BASE_URL}/reports/compliance${query ? `?${query}` : ""}`,
+      `${API_BASE_URL}/reports/compliance${
+        query ? `?${query}` : ""
+      }`,
       {
         method: "GET",
         headers: this.getHeaders(token),
-      }
+      },
     );
-
-    const result = await response.json();
 
     if (!response.ok) {
       throw new Error(
-        result?.error || "Failed to load compliance reports"
+        await this.getErrorMessage(
+          response,
+          "Failed to load compliance reports",
+        ),
       );
     }
 
-    return result;
+    return response.json();
   }
 
   async getComplianceReport(
     token: string,
-    reportId: string
+    reportId: string,
   ): Promise<ComplianceReportResponse> {
     const response = await fetch(
       `${API_BASE_URL}/reports/compliance/${reportId}`,
       {
         method: "GET",
         headers: this.getHeaders(token),
-      }
+      },
     );
-
-    const result = await response.json();
 
     if (!response.ok) {
       throw new Error(
-        result?.error || "Failed to load compliance report"
+        await this.getErrorMessage(
+          response,
+          "Failed to load compliance report",
+        ),
       );
     }
 
-    return result;
+    return response.json();
   }
 }
 

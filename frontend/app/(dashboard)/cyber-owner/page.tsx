@@ -236,7 +236,7 @@ export default function OwnerDashboard() {
             </div>
 
             <Link
-              href="/dashboard/cyber-owner/branches"
+              href="/cyber-owner/branch"
               className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700"
             >
               View all

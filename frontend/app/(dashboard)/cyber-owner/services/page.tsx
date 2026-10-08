@@ -552,9 +552,9 @@ export default function ServicesPage() {
           </Button>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-0">
           {!branchId ? (
-            <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
+            <div className="mx-6 mb-6 flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-[#0757B8]">
                 <Package className="h-6 w-6" />
               </div>
@@ -575,7 +575,7 @@ export default function ServicesPage() {
             </div>
           ) : filteredServices.length ===
             0 ? (
-            <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
+            <div className="mx-6 mb-6 flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-[#0757B8]">
                 <Package className="h-6 w-6" />
               </div>
@@ -603,30 +603,80 @@ export default function ServicesPage() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredServices.map(
-                (service: Service) => {
-                  const active =
-                    service.active;
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="border-y border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Service
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Price
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-right font-semibold text-slate-600">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
 
-                  return (
-                    <div
-                      key={service.id}
-                      className="rounded-xl border border-slate-200 bg-white p-5 transition hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0757B8]">
-                            <Package className="h-5 w-5" />
-                          </div>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredServices.map(
+                    (service: Service) => {
+                      const active =
+                        service.active;
 
-                          <div className="min-w-0">
-                            <h3 className="truncate font-semibold text-slate-900">
-                              {service.name}
-                            </h3>
+                      return (
+                        <tr
+                          key={service.id}
+                          className="transition hover:bg-slate-50"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0757B8]">
+                                <Package className="h-4 w-4" />
+                              </div>
 
+                              <span className="font-medium text-slate-900">
+                                {service.name}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="max-w-xs px-6 py-4 text-slate-500">
                             <span
-                              className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                              className="block truncate"
+                              title={
+                                service.description ??
+                                ""
+                              }
+                            >
+                              {service.description ||
+                                "—"}
+                            </span>
+                          </td>
+
+                          <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">
+                            KES{" "}
+                            {Number(
+                              service.price,
+                            ).toLocaleString(
+                              "en-KE",
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              },
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
                                 active
                                   ? "bg-emerald-50 text-emerald-700"
                                   : "bg-slate-100 text-slate-600"
@@ -636,73 +686,54 @@ export default function ServicesPage() {
                                 ? "Active"
                                 : "Inactive"}
                             </span>
-                          </div>
-                        </div>
-                      </div>
+                          </td>
 
-                      <div className="mt-5">
-                        <p className="text-2xl font-bold text-slate-900">
-                          KES{" "}
-                          {Number(
-                            service.price,
-                          ).toLocaleString(
-                            "en-KE",
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            },
-                          )}
-                        </p>
+                          <td className="px-6 py-4">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  openEditForm(
+                                    service,
+                                  )
+                                }
+                                disabled={saving}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </Button>
 
-                        {service.description && (
-                          <p className="mt-2 line-clamp-2 text-sm text-slate-500">
-                            {
-                              service.description
-                            }
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mt-5 flex gap-2 border-t border-slate-100 pt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() =>
-                            openEditForm(
-                              service,
-                            )
-                          }
-                          disabled={saving}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleStatusChange(
-                              service,
-                            )
-                          }
-                          disabled={saving}
-                          className={
-                            active
-                              ? "text-red-600 hover:bg-red-50 hover:text-red-700"
-                              : "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                          }
-                        >
-                          <Power className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                },
-              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleStatusChange(
+                                    service,
+                                  )
+                                }
+                                disabled={saving}
+                                className={
+                                  active
+                                    ? "text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    : "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                }
+                              >
+                                <Power className="mr-2 h-4 w-4" />
+                                {active
+                                  ? "Deactivate"
+                                  : "Activate"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    },
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

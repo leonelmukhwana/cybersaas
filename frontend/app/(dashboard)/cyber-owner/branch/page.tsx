@@ -59,7 +59,7 @@ export default function BranchesPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to load branches."
+          : "Failed to load branches.",
       );
     } finally {
       setLoading(false);
@@ -101,7 +101,7 @@ export default function BranchesPage() {
   }
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+    event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
@@ -132,7 +132,7 @@ export default function BranchesPage() {
             address: trimmedAddress || undefined,
             phone: trimmedPhone || undefined,
           },
-          token
+          token,
         );
 
         setSuccess("Branch updated successfully.");
@@ -141,9 +141,7 @@ export default function BranchesPage() {
          * Your current backend CreateBranchRequest requires
          * business_name.
          *
-         * For now we use the authenticated owner's business
-         * name from the backend flow. If the backend changes
-         * this request later, we can remove this field.
+         * For now we use the branch name for this field.
          */
         await branchService.create(
           {
@@ -152,7 +150,7 @@ export default function BranchesPage() {
             address: trimmedAddress || undefined,
             phone: trimmedPhone || undefined,
           },
-          token
+          token,
         );
 
         setSuccess("Branch created successfully.");
@@ -164,7 +162,7 @@ export default function BranchesPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to save branch."
+          : "Failed to save branch.",
       );
     } finally {
       setSaving(false);
@@ -189,13 +187,13 @@ export default function BranchesPage() {
         {
           status: newStatus,
         },
-        token
+        token,
       );
 
       setSuccess(
         newStatus === "active"
           ? "Branch activated successfully."
-          : "Branch deactivated successfully."
+          : "Branch deactivated successfully.",
       );
 
       await loadBranches();
@@ -203,7 +201,7 @@ export default function BranchesPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to change branch status."
+          : "Failed to change branch status.",
       );
     }
   }
@@ -364,7 +362,7 @@ export default function BranchesPage() {
           </Button>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
             <div className="flex min-h-40 items-center justify-center">
               <p className="text-sm text-slate-500">
@@ -372,7 +370,7 @@ export default function BranchesPage() {
               </p>
             </div>
           ) : branches.length === 0 ? (
-            <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
+            <div className="m-6 flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-[#0757B8]">
                 <Building2 className="h-6 w-6" />
               </div>
@@ -394,28 +392,91 @@ export default function BranchesPage() {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {branches.map((branch) => {
-                const active = branch.status === "active";
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="border-y border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Branch
+                    </th>
 
-                return (
-                  <div
-                    key={branch.id}
-                    className="rounded-xl border border-slate-200 bg-white p-5 transition hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0757B8]">
-                          <Building2 className="h-5 w-5" />
-                        </div>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Address
+                    </th>
 
-                        <div className="min-w-0">
-                          <h3 className="truncate font-semibold text-slate-900">
-                            {branch.name}
-                          </h3>
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Phone
+                    </th>
 
+                    <th className="px-6 py-3 font-semibold text-slate-600">
+                      Status
+                    </th>
+
+                    <th className="px-6 py-3 text-right font-semibold text-slate-600">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {branches.map((branch) => {
+                    const active =
+                      branch.status === "active";
+
+                    return (
+                      <tr
+                        key={branch.id}
+                        className="transition hover:bg-slate-50"
+                      >
+                        {/* BRANCH */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0757B8]">
+                              <Building2 className="h-4 w-4" />
+                            </div>
+
+                            <span className="font-medium text-slate-900">
+                              {branch.name}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* ADDRESS */}
+                        <td className="max-w-xs px-6 py-4 text-slate-500">
+                          {branch.address ? (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 shrink-0" />
+
+                              <span
+                                className="block truncate"
+                                title={branch.address}
+                              >
+                                {branch.address}
+                              </span>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+
+                        {/* PHONE */}
+                        <td className="whitespace-nowrap px-6 py-4 text-slate-500">
+                          {branch.phone ? (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 shrink-0" />
+                              <span>
+                                {branch.phone}
+                              </span>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+
+                        {/* STATUS */}
+                        <td className="px-6 py-4">
                           <span
-                            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
                               active
                                 ? "bg-emerald-50 text-emerald-700"
                                 : "bg-slate-100 text-slate-600"
@@ -425,59 +486,48 @@ export default function BranchesPage() {
                               ? "Active"
                               : "Inactive"}
                           </span>
-                        </div>
-                      </div>
-                    </div>
+                        </td>
 
-                    <div className="mt-5 space-y-3">
-                      {branch.address && (
-                        <div className="flex items-start gap-2 text-sm text-slate-500">
-                          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-                          <span>{branch.address}</span>
-                        </div>
-                      )}
+                        {/* ACTIONS */}
+                        <td className="px-6 py-4">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                openEditForm(branch)
+                              }
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </Button>
 
-                      {branch.phone && (
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Phone className="h-4 w-4 shrink-0" />
-                          <span>{branch.phone}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-5 flex gap-2 border-t border-slate-100 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() =>
-                          openEditForm(branch)
-                        }
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={
-                          active
-                            ? "text-red-600 hover:bg-red-50 hover:text-red-700"
-                            : "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                        }
-                        onClick={() =>
-                          handleStatusChange(branch)
-                        }
-                      >
-                        <Power className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className={
+                                active
+                                  ? "text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  : "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                              }
+                              onClick={() =>
+                                handleStatusChange(branch)
+                              }
+                            >
+                              <Power className="mr-2 h-4 w-4" />
+                              {active
+                                ? "Deactivate"
+                                : "Activate"}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

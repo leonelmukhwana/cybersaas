@@ -6,9 +6,12 @@ import type {
   CustomerQueryParams,
 } from "@/types/customer";
 
-const API_URL =
+const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8080/api";
+  "http://localhost:8080"
+).replace(/\/+$/, "");
+
+const API_BASE_URL = `${API_URL}/api`;
 
 class CustomerService {
   private getHeaders(
@@ -56,7 +59,7 @@ class CustomerService {
     );
 
     const response = await fetch(
-      `${API_URL}/customers?${searchParams.toString()}`,
+      `${API_BASE_URL}/customers?${searchParams.toString()}`,
       {
         method: "GET",
         headers: this.getHeaders(token),
@@ -85,7 +88,7 @@ class CustomerService {
     );
 
     const response = await fetch(
-      `${API_URL}/customers/${customerId}?${searchParams.toString()}`,
+      `${API_BASE_URL}/customers/${customerId}?${searchParams.toString()}`,
       {
         method: "GET",
         headers: this.getHeaders(token),
@@ -111,7 +114,7 @@ class CustomerService {
       crypto.randomUUID();
 
     const response = await fetch(
-      `${API_URL}/customers`,
+      `${API_BASE_URL}/customers`,
       {
         method: "POST",
         headers: this.getHeaders(
@@ -150,7 +153,7 @@ class CustomerService {
       crypto.randomUUID();
 
     const response = await fetch(
-      `${API_URL}/customers/${customerId}?${searchParams.toString()}`,
+      `${API_BASE_URL}/customers/${customerId}?${searchParams.toString()}`,
       {
         method: "PUT",
         headers: this.getHeaders(

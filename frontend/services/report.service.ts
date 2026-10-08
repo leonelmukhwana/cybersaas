@@ -1,16 +1,19 @@
-
 import {
   FetchOwnerReportFilters,
   OwnerReportSummaryResponse,
 } from "@/types/reports";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8080"
+).replace(/\/+$/, "");
+
+const API_BASE_URL = `${API_URL}/api`;
 
 export const reportService = {
   async getOwnerSummary(
     token: string,
-    filters: FetchOwnerReportFilters = {}
+    filters: FetchOwnerReportFilters = {},
   ): Promise<OwnerReportSummaryResponse> {
     const params = new URLSearchParams();
 
@@ -44,7 +47,7 @@ export const reportService = {
       const errorData = await response.json().catch(() => ({}));
 
       throw new Error(
-        errorData.message || "Failed to fetch report summary."
+        errorData.message || "Failed to fetch report summary.",
       );
     }
 
