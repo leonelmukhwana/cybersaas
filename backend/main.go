@@ -65,6 +65,7 @@ func main() {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:3000",
+			"https://cybersaas.vercel.app",
 		},
 		AllowMethods: []string{
 			http.MethodGet,
@@ -143,7 +144,7 @@ func main() {
 	resetURL := os.Getenv("RESET_URL")
 
 	if resetURL == "" {
-		resetURL = "http://localhost:3000"
+		resetURL = "https://cybersaas.vercel.app"
 	}
 
 	// --------------------------------------------------
