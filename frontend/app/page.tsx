@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -71,9 +70,9 @@ const complianceFeatures = [
 const installationSteps = [
   {
     number: "01",
-    title: "Download CyberSaaS",
+    title: "Download CyberSaaS Terminal",
     description:
-      "Download the CyberSaaS Windows installer for the computer or terminal you want to set up.",
+      "Download the official CyberSaaS Terminal Windows installer for the computer or terminal you want to set up.",
   },
   {
     number: "02",
@@ -607,9 +606,7 @@ export default function Home() {
               </div>
 
               <div className="mt-7 rounded-2xl bg-[#0757B8] p-5 text-white">
-                <p className="font-bold">
-                  No browsing-history storage
-                </p>
+                <p className="font-bold">No browsing-history storage</p>
 
                 <p className="mt-1 text-sm leading-6 text-blue-100">
                   CyberSaaS is designed to keep the operational session
@@ -695,23 +692,22 @@ export default function Home() {
               <div className="text-white">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-semibold text-white">
                   <Download className="h-4 w-4" />
-                  CyberSaaS Windows Application
+                  CyberSaaS Terminal for Windows
                 </div>
 
                 <h2 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
-                  Download CyberSaaS for your cyber computers
+                  Download CyberSaaS Terminal for your cyber computers
                 </h2>
 
                 <p className="mt-4 max-w-2xl leading-7 text-blue-100">
-                  Install the CyberSaaS terminal application on the computers
+                  Install the CyberSaaS Terminal application on the computers
                   used by your cyber café. The application is designed for
                   cyber attendants and terminal operations.
                 </p>
 
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                   <a
-                    href="/downloads/CyberSaaS-Installer.exe"
-                    download
+                    href="https://github.com/leonelmukhwana/cybersaas/releases/download/v1.0.0/CyberSaaS-Terminal-Setup.exe"
                     className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-[#0757B8] transition hover:bg-blue-50"
                   >
                     <Download className="mr-2 h-4 w-4" />
@@ -730,7 +726,12 @@ export default function Home() {
                 </div>
 
                 <p className="mt-4 text-xs text-blue-200">
-                  Windows installer • Download the guide before installing
+                  Windows x64 • Version 1.0.0 • Self-contained installer
+                </p>
+
+                <p className="mt-2 break-all text-[10px] leading-5 text-blue-200/80">
+                  SHA-256:
+                  9AB5B51EC90FBAFF74414A9ECA2766CDA1E819A5F9F850CA5EF81CEE5586D0B4
                 </p>
               </div>
 
@@ -1039,9 +1040,7 @@ export default function Home() {
             >
               <Mail className="h-5 w-5 text-[#0757B8]" />
 
-              <p className="mt-3 text-sm font-bold text-slate-950">
-                Email
-              </p>
+              <p className="mt-3 text-sm font-bold text-slate-950">Email</p>
 
               <p className="mt-1 text-sm text-slate-500">
                 epoa2026@gmail.com
