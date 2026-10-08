@@ -25,11 +25,14 @@ public partial class MainWindow : Window
     private const string ApiBaseUrl =
         "https://cybersaas.onrender.com/api/";
 
-#if DEBUG
-    private const bool IsTestBuild = true;
-#else
-    private const bool IsTestBuild = false;
-#endif
+    private static bool IsTestBuild
+    {
+    #if DEBUG
+        get => true;
+    #else
+        get => false;
+    #endif
+    }
 
     private readonly HttpClient _httpClient;
     private readonly TerminalSessionApi _terminalSessionApi;
