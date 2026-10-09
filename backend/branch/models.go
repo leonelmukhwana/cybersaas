@@ -1,6 +1,8 @@
 package branch
 
-import "time"
+import (
+	"time"
+)
 
 type Branch struct {
 	ID        string    `json:"id"`

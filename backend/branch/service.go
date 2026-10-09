@@ -366,6 +366,10 @@ func (s *Service) UpdateBillingConfig(
 		return BillingConfig{}, errors.New("tenant context is required")
 	}
 
+	if strings.TrimSpace(userID) == "" {
+		return BillingConfig{}, errors.New("user context is required")
+	}
+
 	if _, err := uuid.Parse(branchID); err != nil {
 		return BillingConfig{}, fmt.Errorf(
 			"%w: invalid branch id",
@@ -394,19 +398,24 @@ func (s *Service) UpdateBillingConfig(
 		)
 	}
 
-	req.RoundingMode = strings.ToLower(strings.TrimSpace(req.RoundingMode))
-	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
-
-	if req.RoundingMode == "" {
+	req.RoundingMode = strings.ToLower(
+		strings.TrimSpace(req.RoundingMode),
+	)
+	switch req.RoundingMode {
+	case "up", "down", "nearest":
+	default:
 		return BillingConfig{}, fmt.Errorf(
-			"%w: rounding_mode is required",
+			"%w: rounding_mode must be up, down, or nearest",
 			ErrInvalidBillingConfig,
 		)
 	}
 
-	if req.Currency == "" || len(req.Currency) > 10 {
+	req.Currency = strings.ToUpper(
+		strings.TrimSpace(req.Currency),
+	)
+	if len(req.Currency) < 3 || len(req.Currency) > 10 {
 		return BillingConfig{}, fmt.Errorf(
-			"%w: currency must contain between 1 and 10 characters",
+			"%w: currency must contain between 3 and 10 characters",
 			ErrInvalidBillingConfig,
 		)
 	}

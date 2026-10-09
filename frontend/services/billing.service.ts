@@ -57,20 +57,26 @@ export const billingService = {
     return result.data;
   },
 
-  async save(
-    token: string,
-    branchId: string,
-    input: BillingConfigInput,
-  ): Promise<BillingConfig> {
-    const result = await request<BillingConfigResponse>(
-      token,
-      `/branches/${encodeURIComponent(branchId)}/billing-config`,
-      {
-        method: "PUT",
-        body: JSON.stringify(input),
-      },
-    );
+  
+async save(
+  token: string,
+  branchId: string,
+  input: BillingConfigInput,
+): Promise<BillingConfig> {
+  const result = await request<BillingConfigResponse>(
+    token,
+    `/branches/${encodeURIComponent(branchId)}/billing-config`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        ...input,
+        rate_per_minute: Number(input.rate_per_minute),
+        minimum_charge: Number(input.minimum_charge),
+      }),
+    },
+  );
 
-    return result.data;
-  },
+  return result.data;
+},
+
 };
