@@ -110,6 +110,11 @@ const sidebarItems: Record<UserRole, SidebarItem[]> = {
     icon: Settings,
   },
   {
+    label: "Billings",
+    href: "/cyber-owner/billing",
+    icon: Settings,
+  },
+  {
     label: "Settings",
     href: "/cyber-owner/settings",
     icon: Settings,

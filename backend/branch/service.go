@@ -335,3 +335,116 @@ func (s *Service) ChangeStatus(
 
 	return b, nil
 }
+
+var ErrInvalidBillingConfig = errors.New("invalid billing configuration")
+
+func (s *Service) GetBillingConfig(
+	ctx context.Context,
+	tenantID string,
+	branchID string,
+) (BillingConfig, error) {
+	if strings.TrimSpace(tenantID) == "" {
+		return BillingConfig{}, errors.New("tenant context is required")
+	}
+
+	if _, err := uuid.Parse(branchID); err != nil {
+		return BillingConfig{}, errors.New("invalid branch id")
+	}
+
+	return s.repo.GetBillingConfig(ctx, tenantID, branchID)
+}
+
+func (s *Service) UpdateBillingConfig(
+	ctx context.Context,
+	userID string,
+	tenantID string,
+	branchID string,
+	req UpdateBillingConfigRequest,
+	ipAddress *string,
+) (BillingConfig, error) {
+	if strings.TrimSpace(tenantID) == "" {
+		return BillingConfig{}, errors.New("tenant context is required")
+	}
+
+	if _, err := uuid.Parse(branchID); err != nil {
+		return BillingConfig{}, fmt.Errorf(
+			"%w: invalid branch id",
+			ErrInvalidBillingConfig,
+		)
+	}
+
+	if req.RatePerMinute < 0 {
+		return BillingConfig{}, fmt.Errorf(
+			"%w: rate_per_minute cannot be negative",
+			ErrInvalidBillingConfig,
+		)
+	}
+
+	if req.MinimumCharge < 0 {
+		return BillingConfig{}, fmt.Errorf(
+			"%w: minimum_charge cannot be negative",
+			ErrInvalidBillingConfig,
+		)
+	}
+
+	if req.BillingIntervalMinutes <= 0 {
+		return BillingConfig{}, fmt.Errorf(
+			"%w: billing_interval_minutes must be greater than zero",
+			ErrInvalidBillingConfig,
+		)
+	}
+
+	req.RoundingMode = strings.ToLower(strings.TrimSpace(req.RoundingMode))
+	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
+
+	if req.RoundingMode == "" {
+		return BillingConfig{}, fmt.Errorf(
+			"%w: rounding_mode is required",
+			ErrInvalidBillingConfig,
+		)
+	}
+
+	if req.Currency == "" || len(req.Currency) > 10 {
+		return BillingConfig{}, fmt.Errorf(
+			"%w: currency must contain between 1 and 10 characters",
+			ErrInvalidBillingConfig,
+		)
+	}
+
+	config, err := s.repo.UpdateBillingConfig(
+		ctx,
+		tenantID,
+		branchID,
+		req,
+	)
+	if err != nil {
+		return BillingConfig{}, err
+	}
+
+	tenant := tenantID
+	branch := branchID
+
+	_ = s.repo.CreateAuditLog(
+		ctx,
+		&tenant,
+		&branch,
+		userID,
+		"owner",
+		"branch.billing_config_updated",
+		"billing_config",
+		config.ID,
+		nil,
+		fmt.Sprintf(
+			`{"rate_per_minute":%v,"minimum_charge":%v,"billing_interval_minutes":%d,"rounding_mode":%q,"currency":%q}`,
+			config.RatePerMinute,
+			config.MinimumCharge,
+			config.BillingIntervalMinutes,
+			config.RoundingMode,
+			config.Currency,
+		),
+		"Branch billing configuration updated",
+		ipAddress,
+	)
+
+	return config, nil
+}

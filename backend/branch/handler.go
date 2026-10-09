@@ -295,3 +295,94 @@ func (h *Handler) ChangeStatus(c *gin.Context) {
 		"branch": b,
 	})
 }
+
+func (h *Handler) GetBillingConfig(c *gin.Context) {
+	tenantID, ok := middleware.CurrentTenantID(c)
+	if !ok || tenantID == "" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "tenant context is required",
+		})
+		return
+	}
+
+	config, err := h.service.GetBillingConfig(
+		c.Request.Context(),
+		tenantID,
+		c.Param("id"),
+	)
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		if errors.Is(err, ErrNotFound) {
+			status = http.StatusNotFound
+		} else if err.Error() == "invalid branch id" {
+			status = http.StatusBadRequest
+		}
+
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": config,
+	})
+}
+
+func (h *Handler) UpdateBillingConfig(c *gin.Context) {
+	userID, userOK := middleware.CurrentUserID(c)
+	tenantID, tenantOK := middleware.CurrentTenantID(c)
+
+	if !userOK || userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "authentication required",
+		})
+		return
+	}
+
+	if !tenantOK || tenantID == "" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "tenant context is required",
+		})
+		return
+	}
+
+	var req UpdateBillingConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body",
+		})
+		return
+	}
+
+	ip := c.ClientIP()
+	var ipAddress *string
+	if ip != "" {
+		ipAddress = &ip
+	}
+
+	config, err := h.service.UpdateBillingConfig(
+		c.Request.Context(),
+		userID,
+		tenantID,
+		c.Param("id"),
+		req,
+		ipAddress,
+	)
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		switch {
+		case errors.Is(err, ErrNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, ErrInvalidBillingConfig):
+			status = http.StatusBadRequest
+		}
+
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": config,
+	})
+}

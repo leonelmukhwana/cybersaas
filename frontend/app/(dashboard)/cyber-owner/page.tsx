@@ -319,7 +319,7 @@ export default function OwnerDashboard() {
 
           <div className="mt-6 space-y-2">
             <Link
-              href="/dashboard/cyber-owner/branches"
+              href="/cyber-owner/branch"
               className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-blue-200 hover:bg-blue-50/50"
             >
               <Building2 className="h-4 w-4 text-blue-600" />
@@ -336,7 +336,7 @@ export default function OwnerDashboard() {
             </Link>
 
             <Link
-              href="/dashboard/cyber-owner/attendants"
+              href="/cyber-owner/attendant"
               className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-blue-200 hover:bg-blue-50/50"
             >
               <UserRound className="h-4 w-4 text-blue-600" />
@@ -353,7 +353,7 @@ export default function OwnerDashboard() {
             </Link>
 
             <Link
-              href="/dashboard/cyber-owner/licence-keys"
+              href="/cyber-owner/licence-keys"
               className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-blue-200 hover:bg-blue-50/50"
             >
               <KeyRound className="h-4 w-4 text-blue-600" />
@@ -370,7 +370,7 @@ export default function OwnerDashboard() {
             </Link>
 
             <Link
-              href="/dashboard/cyber-owner/subscription"
+              href="/cyber-owner/subscription"
               className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-blue-200 hover:bg-blue-50/50"
             >
               <CreditCard className="h-4 w-4 text-blue-600" />
@@ -392,17 +392,17 @@ export default function OwnerDashboard() {
       {/* MANAGEMENT OVERVIEW */}
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Link
-          href="/dashboard/cyber-owner/terminals"
+          href="/cyber-owner/branch"
           className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
         >
           <Laptop className="h-5 w-5 text-blue-600" />
 
           <h3 className="mt-4 text-sm font-semibold text-slate-950">
-            Terminals
+            Branches
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            Manage registered computers.
+            Manage registered Branches.
           </p>
 
           <div className="mt-4 flex items-center gap-1 text-sm font-medium text-blue-600">
@@ -412,17 +412,17 @@ export default function OwnerDashboard() {
         </Link>
 
         <Link
-          href="/dashboard/cyber-owner/customers"
+          href="/cyber-owner/attendant"
           className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
         >
           <Users className="h-5 w-5 text-blue-600" />
 
           <h3 className="mt-4 text-sm font-semibold text-slate-950">
-            Customers
+            Attendants
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            View and manage registered customers.
+            View and manage registered attendants.
           </p>
 
           <div className="mt-4 flex items-center gap-1 text-sm font-medium text-blue-600">
@@ -432,17 +432,17 @@ export default function OwnerDashboard() {
         </Link>
 
         <Link
-          href="/dashboard/cyber-owner/receipts"
+          href="/cyber-owner/licence-keys"
           className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
         >
           <Receipt className="h-5 w-5 text-blue-600" />
 
           <h3 className="mt-4 text-sm font-semibold text-slate-950">
-            Receipts
+            LIcence
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            View issued business receipts.
+            View And Manage license keys.
           </p>
 
           <div className="mt-4 flex items-center gap-1 text-sm font-medium text-blue-600">
@@ -452,7 +452,7 @@ export default function OwnerDashboard() {
         </Link>
 
         <Link
-          href="/dashboard/cyber-owner/reports"
+          href="/cyber-owner/reports"
           className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
         >
           <Activity className="h-5 w-5 text-blue-600" />
